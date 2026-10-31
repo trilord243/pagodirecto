@@ -9,6 +9,7 @@ import type { Queryable } from '../database/database.service.js';
 import { WhatsappApiService } from '../whatsapp/whatsapp-api.service.js';
 import type { PromotionInput } from './restaurant.schemas.js';
 import { renderLoyaltyCard } from './whatsapp-images.js';
+import type { LoyaltyCardImage } from './whatsapp-images.js';
 
 export interface Promotion {
   id: number;
@@ -377,6 +378,19 @@ export class LoyaltyService {
         where restaurant_id = $1 and customer_phone = $2`,
       [restaurantId, phone],
     );
+  }
+
+  // Un pedido sin pagar todavia no suma: solo se le muestra como va su tarjeta.
+  async notifyProgress(phone: string, card: LoyaltyCardImage) {
+    try {
+      await this.whatsapp.sendImage(
+        phone,
+        await renderLoyaltyCard(card),
+        `Tu tarjeta en ${card.restaurant}: llevas ${card.stamps} de ${card.stampsRequired}. Esta compra suma cuando se confirme tu pago.`,
+      );
+    } catch (error) {
+      this.logger.warn(`Tarjeta sin enviar: ${String(error)}`);
+    }
   }
 
   // Si WhatsApp falla, la compra ya quedo contada: no se le avisa y ya.

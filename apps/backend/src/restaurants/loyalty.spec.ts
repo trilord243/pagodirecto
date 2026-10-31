@@ -161,6 +161,8 @@ describe('fidelidad y promociones', () => {
     const { body } = await asA(api().get('/restaurants/menu/items'));
     arepa = body.find((i: { name: string }) => i.name === 'Arepa');
     malta = body.find((i: { name: string }) => i.name === 'Malta');
+    // Publicar crea una tarjeta por defecto; estas pruebas fijan la suya.
+    await lite.query('delete from loyalty_programs');
   });
 
   afterEach(async () => {
@@ -217,6 +219,79 @@ describe('fidelidad y promociones', () => {
       expect(body.customers[0].stamps).toBe(1);
     });
 
+    it('publicar el primer menu crea la tarjeta con el plato mas barato', async () => {
+      await asB(api().put('/restaurants/menu')).send({
+        currency: 'USD',
+        categories: [
+          {
+            name: 'Platos',
+            items: [
+              { name: 'Pizza', price: 9 },
+              { name: 'Agua', price: 1 },
+            ],
+          },
+        ],
+      });
+
+      const { body } = await asB(api().get('/restaurants/loyalty'));
+
+      expect(body.program).toMatchObject({
+        stampsRequired: 5,
+        rewardName: 'Agua',
+        active: true,
+      });
+    });
+
+    it('republicar respeta la tarjeta del comercio, aunque este apagada', async () => {
+      await asA(api().put('/restaurants/loyalty'))
+        .send({ stampsRequired: 8, rewardItemId: malta.id, active: false })
+        .expect(200);
+
+      await asA(api().put('/restaurants/menu')).send({
+        currency: 'USD',
+        categories: [
+          { name: 'Platos', items: [{ name: 'Malta', price: 2 }] },
+        ],
+      });
+
+      const { body } = await asA(api().get('/restaurants/loyalty'));
+      expect(body.program).toMatchObject({ stampsRequired: 8, active: false });
+    });
+
+    it('pagando por enlace tambien muestra la tarjeta, sin sumar', async () => {
+      await setProgram(5);
+
+      const result = await order();
+
+      expect(result.tarjeta).toMatchObject({
+        compras: 0,
+        compras_necesarias: 5,
+        premio: 'Malta',
+        suma_al_pagar: true,
+      });
+      expect(sendImage).toHaveBeenCalledTimes(2);
+      expect(sendImage.mock.calls[0][2]).toContain(result.enlace);
+      expect(sendImage.mock.calls[1][2]).toContain('llevas 0 de 5');
+      const { body } = await asA(api().get('/restaurants/loyalty'));
+      expect(body.customers).toEqual([]);
+    });
+
+    it('si falla la imagen de la tarjeta el pedido sigue en pie', async () => {
+      await setProgram(5);
+      sendImage.mockResolvedValueOnce(undefined);
+      sendImage.mockRejectedValueOnce(new Error('fuera de la ventana'));
+
+      const result = await order();
+
+      expect(result).toMatchObject({ pagado: false, qr_enviado: true });
+    });
+
+    it('sin tarjeta activa solo envia el QR', async () => {
+      await order();
+
+      expect(sendImage).toHaveBeenCalledTimes(1);
+    });
+
     it('no suma por pedir: solo cuando el pedido se paga', async () => {
       await setProgram();
       await order();
@@ -239,8 +314,8 @@ describe('fidelidad y promociones', () => {
         stamps: 1,
         purchases: 1,
       });
-      await vi.waitFor(() => expect(sendImage).toHaveBeenCalledTimes(2));
-      const [phone, image, caption] = sendImage.mock.calls[1];
+      await vi.waitFor(() => expect(sendImage).toHaveBeenCalledTimes(3));
+      const [phone, image, caption] = sendImage.mock.calls[2];
       expect(phone).toBe(CUSTOMER.phone);
       expect(image.toString('hex', 0, 8)).toBe(PNG_SIGNATURE);
       expect(caption).toContain('Llevas 1 de 3');

@@ -21,6 +21,7 @@ export interface MenuCategory {
 }
 
 export const DEFAULT_CATEGORY = 'Menú';
+const DEFAULT_STAMPS = 5;
 
 const ITEM_COLUMNS =
   'id, name, description, category, price::float8 as price, available';
@@ -105,6 +106,18 @@ export class MenuService {
           where restaurant_id = $1
             and lower(name) <> all (select lower(unnest($2::text[])))`,
         [restaurantId, names],
+      );
+      // Todo comercio arranca con tarjeta: su plato mas barato tras 5 compras.
+      // Si ya tiene una, aunque la haya apagado, se respeta.
+      await tx.query(
+        `insert into loyalty_programs
+           (restaurant_id, stamps_required, reward_item_id)
+         select restaurant_id, $2, id from menu_items
+          where restaurant_id = $1 and available
+          order by price, id
+          limit 1
+         on conflict (restaurant_id) do nothing`,
+        [restaurantId, DEFAULT_STAMPS],
       );
     });
     return this.get(restaurantId);

@@ -253,6 +253,16 @@ export class RestaurantAgentTools {
         },
       };
     }
+    const card = await this.loyalty.cardFor(
+      parsed.data.restaurante,
+      customer.phone,
+    );
+    const pendingCard = card && {
+      compras: card.stamps,
+      compras_necesarias: card.stampsRequired,
+      premio: card.rewardName,
+      suma_al_pagar: true,
+    };
     // El pedido ya existe: un fallo aqui no puede volver como error, o el
     // agente lo crearia de nuevo.
     try {
@@ -261,10 +271,23 @@ export class RestaurantAgentTools {
         await renderQr(url),
         `Pedido ${order.id} en ${order.restaurant}\nTotal: ${formatMoney(order.total, order.currency)}\n\nEscanea el QR o abre este enlace:\n${url}`,
       );
-      return { ...result, pagado: false, qr_enviado: true };
+      if (card) {
+        await this.loyalty.notifyProgress(customer.phone, card);
+      }
+      return {
+        ...result,
+        pagado: false,
+        qr_enviado: true,
+        tarjeta: pendingCard,
+      };
     } catch (error) {
       this.logger.error(`QR del pedido ${order.id}: ${String(error)}`);
-      return { ...result, pagado: false, qr_enviado: false };
+      return {
+        ...result,
+        pagado: false,
+        qr_enviado: false,
+        tarjeta: pendingCard,
+      };
     }
   }
 }
