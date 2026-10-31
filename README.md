@@ -65,10 +65,10 @@ Los restaurantes de prueba se crean con `dist/seed-restaurants.js`, que imprime 
 
 ```
 WhatsApp -> Meta -> Odoo (odoo.example.com/whatsapp/webhook)
-                      └─ copia por nginx -> Nest (VPS) -> agente de Claude -> Graph API
+                      └─ durante la prueba, nginx lo entrega solo a Nest (VPS) -> agente de Claude -> Graph API
 ```
 
-Usa el número y las credenciales de Odoo. El webhook de Meta sigue apuntando a Odoo y Nest solo recibe una copia (`deploy/nginx-whatsapp-espejo.conf`), así que Odoo no depende de Nest. `WHATSAPP_ALLOWED_NUMBERS` decide quién llega a Claude: una lista de números, `*` para todos o vacío para nadie. Las respuestas del agente salen directo por Graph API y no aparecen en el chat de Odoo.
+Usa el número y las credenciales de Odoo. El webhook de Meta sigue apuntando a `odoo.example.com`, pero durante la prueba nginx lo entrega solo a Nest (`deploy/nginx-whatsapp-solo-nest.conf`), así que esos chats no entran a Odoo. Para volver a enviar los mensajes a Odoo con una copia a Nest, usa `nginx-whatsapp-espejo.conf` en `deploy/remote.sh`. `WHATSAPP_ALLOWED_NUMBERS` decide quién llega a Claude: una lista de números, `*` para todos o vacío para nadie. Las respuestas del agente salen directo por Graph API y no aparecen en el chat de Odoo.
 
 Antes de responder, Nest lee en Odoo el estado del chat (`discuss_channel.stv_bot_state`) con un usuario de Postgres de solo lectura. Claude responde en chats nuevos o en espera, se calla si un asesor escribió en las últimas `WHATSAPP_HUMAN_HOURS` horas o si el chat está apagado, y no responde si no puede leer el estado.
 
