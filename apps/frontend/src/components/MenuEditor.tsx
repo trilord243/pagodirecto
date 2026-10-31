@@ -52,6 +52,8 @@ export function MenuEditor({
   const [savedMenu, setSavedMenu] = useState<EditableMenu | null>(null)
   const { total, toReview } = countItems(menu)
   const manual = !published && !hasOriginal
+  // Para saber si el "todo revisado" viene de confirmar productos marcados.
+  const [initialToReview] = useState(() => countItems(initialMenu).toReview)
 
   const defaultNotice =
     menu === savedMenu
@@ -61,6 +63,36 @@ export function MenuEditor({
         : replacesPublished
           ? 'Al publicar, este menú reemplaza al que tienes activo.'
           : ''
+
+  // Lo que dice la barra de abajo, justo antes de publicar.
+  const status: { tone: 'warn' | 'ok' | 'info'; text: string } | null = notice
+    ? { tone: 'warn', text: notice }
+    : toReview > 0
+      ? {
+          tone: 'warn',
+          text:
+            toReview === 1
+              ? 'Falta confirmar 1 producto marcado.'
+              : `Faltan confirmar ${toReview} productos marcados.`,
+        }
+      : menu === savedMenu
+        ? { tone: 'ok', text: defaultNotice }
+        : initialToReview > 0
+          ? {
+              tone: 'ok',
+              text: published
+                ? 'Todo revisado.'
+                : 'Todo revisado. Ya puedes publicar.',
+            }
+          : defaultNotice
+            ? { tone: 'info', text: defaultNotice }
+            : null
+
+  function showNextReview() {
+    document
+      .querySelector('.item--review')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   function clearError(key: string) {
     if (!(key in errors)) return
@@ -193,15 +225,6 @@ export function MenuEditor({
             <li>
               <strong>{total}</strong> productos
             </li>
-            <li className={toReview > 0 ? 'stats__warn' : 'stats__ok'}>
-              {toReview > 0 ? (
-                <>
-                  <strong>{toReview}</strong> por revisar
-                </>
-              ) : (
-                'Todo revisado'
-              )}
-            </li>
           </ul>
 
           <div className="currency">
@@ -270,6 +293,7 @@ export function MenuEditor({
                 errors={errors}
                 onChange={(patch) => {
                   updateItem(category.id, item.id, patch)
+                  setNotice(null)
                   if ('name' in patch) clearError(fieldKey(item.id, 'name'))
                   if ('price' in patch) clearError(fieldKey(item.id, 'price'))
                 }}
@@ -311,9 +335,32 @@ export function MenuEditor({
       </button>
 
       <div className="editor-bar">
-        <p className="editor-bar__notice" role="status">
-          {notice ?? defaultNotice}
-        </p>
+        <div
+          className={`editor-bar__status ${status ? `editor-bar__status--${status.tone}` : ''}`}
+          role="status"
+        >
+          {status && (
+            <>
+              {status.tone === 'warn' ? (
+                <AlertIcon width={18} height={18} />
+              ) : status.tone === 'ok' ? (
+                <CheckIcon width={18} height={18} />
+              ) : null}
+              <span className="editor-bar__message">
+                <span>{status.text}</span>
+                {toReview > 0 && (
+                  <button
+                    type="button"
+                    className="editor-bar__next"
+                    onClick={showNextReview}
+                  >
+                    Ver siguiente
+                  </button>
+                )}
+              </span>
+            </>
+          )}
+        </div>
         <div className="editor-bar__actions">
           <button
             type="button"
@@ -368,14 +415,9 @@ function ItemEditor({ item, currency, errors, onChange, onRemove }: ItemEditorPr
       {item.reviewReason && (
         <div className="item__review">
           <AlertIcon width={18} height={18} />
-          <span>{item.reviewReason}</span>
-          <button
-            type="button"
-            className="item__confirm"
-            onClick={() => onChange({ reviewReason: null })}
-          >
-            <CheckIcon width={14} height={14} /> Está bien
-          </button>
+          <span>
+            {item.reviewReason} Revisa los datos y confírmalo abajo.
+          </span>
         </div>
       )}
 
@@ -437,6 +479,19 @@ function ItemEditor({ item, currency, errors, onChange, onRemove }: ItemEditorPr
           <TrashIcon width={16} height={16} /> Eliminar
         </button>
       </div>
+
+      {item.reviewReason && (
+        <div className="item__confirm-row">
+          <span>¿Los datos de este producto están correctos?</span>
+          <button
+            type="button"
+            className="item__confirm"
+            onClick={() => onChange({ reviewReason: null })}
+          >
+            <CheckIcon width={16} height={16} /> Sí, está correcto
+          </button>
+        </div>
+      )}
     </li>
   )
 }
