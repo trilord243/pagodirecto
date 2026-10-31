@@ -4,7 +4,7 @@ import type { Restaurant } from './auth.service.js';
 
 const PERIOD_DAYS = 30;
 const TIMEZONE = 'America/Caracas';
-// Un cliente frecuente que lleva este tiempo sin pedir se considera en riesgo.
+// Quien ya repitio y lleva este tiempo sin pedir se considera en riesgo.
 const AT_RISK_DAYS = 21;
 const FREQUENT_ORDERS = 4;
 // Sin pedidos suficientes una mediana delataria a un comercio concreto.
@@ -113,11 +113,22 @@ export class IqService {
 
     const [[totals], [previous], [cancelled], days, weekdays, hours] =
       await Promise.all([
-        query<{ orders: number; sales: number; customers: number }>(
-          `select count(*)::int as orders,
-                  coalesce(sum(total), 0)::float8 as sales,
-                  count(distinct customer_phone)::int as customers
-             from orders where ${inPeriod}`,
+        query<{
+          orders: number;
+          sales: number;
+          customers: number;
+          repeat_rate: number;
+        }>(
+          `with buyers as (
+             select customer_phone, count(*) as orders, sum(total) as sales
+               from orders where ${inPeriod}
+              group by customer_phone)
+           select coalesce(sum(orders), 0)::int as orders,
+                  coalesce(sum(sales), 0)::float8 as sales,
+                  count(*)::int as customers,
+                  coalesce(count(*) filter (where orders > 1)::float8
+                           / nullif(count(*), 0), 0) as repeat_rate
+             from buyers`,
         ),
         query<{ orders: number; sales: number }>(
           `select count(*)::int as orders,
@@ -171,7 +182,7 @@ export class IqService {
             and not exists (
               select 1 from order_items i
                 join orders o on o.id = i.order_id
-               where i.menu_item_id = m.id
+               where i.menu_item_id = m.id and o.status <> 'cancelled'
                  and o.created_at > now() - make_interval(days => ${PERIOD_DAYS}))
           order by m.name limit 8`,
       ),
@@ -200,8 +211,7 @@ export class IqService {
          from loyalty_cards where restaurant_id = $1`,
     );
 
-    const total = customers.new + customers.returning;
-    const repeatRate = total > 0 ? customers.returning / total : 0;
+    const repeatRate = totals.repeat_rate;
     const averageTicket =
       totals.orders > 0 ? round(totals.sales / totals.orders) : 0;
     const ordersByWeekday = WEEKDAYS.map((day, index) => ({
@@ -256,20 +266,24 @@ export class IqService {
       weekly: number | null;
       repeat_rate: number | null;
     }>(
-      `with stats as (
-         select o.restaurant_id,
-                count(*) as orders,
-                sum(o.total) as sales,
-                avg(o.total) as ticket,
-                count(*)::float8 / ${PERIOD_DAYS} * 7 as weekly,
-                1 - count(distinct o.customer_phone)::float8 / count(*) as repeat_rate
+      `with buyers as (
+         select o.restaurant_id, o.customer_phone,
+                count(*) as orders, sum(o.total) as sales
            from orders o
            join restaurants r on r.id = o.restaurant_id
           where o.status <> 'cancelled' and r.active and r.id <> $1
             and r.currency = $2
             and o.created_at > now() - make_interval(days => ${PERIOD_DAYS})
-          group by o.restaurant_id
-         having count(*) >= ${MIN_PEER_ORDERS})
+          group by o.restaurant_id, o.customer_phone),
+       stats as (
+         select restaurant_id,
+                sum(sales) as sales,
+                sum(sales) / sum(orders) as ticket,
+                sum(orders)::float8 / ${PERIOD_DAYS} * 7 as weekly,
+                count(*) filter (where orders > 1)::float8 / count(*) as repeat_rate
+           from buyers
+          group by restaurant_id
+         having sum(orders) >= ${MIN_PEER_ORDERS})
        select count(*)::int as peers,
               max(sales) / nullif(sum(sales), 0) as top_share,
               percentile_cont(0.5) within group (order by ticket)::float8 as ticket,

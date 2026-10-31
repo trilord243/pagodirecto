@@ -217,6 +217,40 @@ describe('PagoDirecto IQ', () => {
       expect(JSON.stringify(benchmark)).not.toContain('Comercio');
     });
 
+    it('mide "clientes que repiten" igual en el comercio y en el grupo', async () => {
+      await addOrder(1, '1', 10);
+      await addOrder(1, '1', 10);
+      await addOrder(1, '2', 10);
+      await addOrder(1, '3', 10);
+      for (let id = 2; id < 8; id++) {
+        await addRestaurant(id);
+        for (const phone of ['a', 'a', 'b', 'c', 'd']) {
+          await addOrder(id, `${id}${phone}`, 10);
+        }
+      }
+
+      const { benchmark, summary } = await iq.dashboard(restaurant(1), 'real');
+
+      const repeat = benchmark.metrics.find(({ key }) => key === 'repeatRate');
+      expect(summary.repeatRate).toBe(0.33);
+      expect(repeat).toMatchObject({ mine: 0.33, peers: 0.25 });
+    });
+
+    it('un plato de un pedido cancelado sigue contando como sin ventas', async () => {
+      await lite.query(
+        `insert into menu_items (restaurant_id, name, price) values (1, 'Malta', 2)`,
+      );
+      await addOrder(1, '1', 2, 1, 'cancelled');
+      await lite.query(
+        `insert into order_items (order_id, menu_item_id, name, unit_price, quantity)
+         select o.id, m.id, m.name, 2, 1 from orders o, menu_items m`,
+      );
+
+      const { unsoldItems } = await iq.dashboard(restaurant(1), 'real');
+
+      expect(unsoldItems).toContain('Malta');
+    });
+
     it('no se compara consigo mismo ni con otra moneda', async () => {
       await addPeers(5);
       await lite.query(`update restaurants set currency = 'VES' where id = 2`);

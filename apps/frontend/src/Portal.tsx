@@ -4,6 +4,7 @@ import { Header } from './components/Header.tsx'
 import { AdvisorView } from './components/AdvisorView.tsx'
 import { CatalogView } from './components/CatalogView.tsx'
 import { BagIcon, ChatIcon, MenuIcon, ScanIcon } from './components/Icons.tsx'
+import { IqEntry } from './components/IqEntry.tsx'
 import { LoadState } from './components/LoadState.tsx'
 import { LoyaltyView } from './components/LoyaltyView.tsx'
 import { MenuEditor } from './components/MenuEditor.tsx'
@@ -116,9 +117,10 @@ const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
 interface PortalProps {
   session: Session
   onLogout: () => void
+  onOpenIq: () => void
 }
 
-export function Portal({ session, onLogout }: PortalProps) {
+export function Portal({ session, onLogout, onOpenIq }: PortalProps) {
   const [section, setSection] = useState<Section>('menu')
   // Se monta la primera vez que se abre y ya no se quita: el análisis tarda.
   const [advisorOpened, setAdvisorOpened] = useState(false)
@@ -399,6 +401,8 @@ export function Portal({ session, onLogout }: PortalProps) {
             ))}
           {advisorOpened && (
             <div hidden={section !== 'advisor'}>
+              {/* Aquí y no en AdvisorView: se ve con plan, sin plan y si el asesor falla. */}
+              <IqEntry onOpen={onOpenIq} />
               <AdvisorView
                 token={session.token}
                 currency={currency}

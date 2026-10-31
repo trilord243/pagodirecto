@@ -1,0 +1,990 @@
+/* ---------- PagoDirecto IQ ---------- */
+
+/* App.css carga después de este archivo: lo que ajusta .hero, .card o .text-button
+   se escribe junto con esa clase para no perder contra ella.
+
+   El 150 % de :root se hereda en píxeles: en texto chico quedaría muy suelto.
+   --iq-series-1 es siempre el comercio y --iq-series-2 el grupo: el par pasa
+   validate_palette.js sobre #fff. --muted, --success y --pink no llegan a 4.5:1
+   como texto chico; por eso aquí el texto usa --text y estos tonos. */
+.iq {
+  --iq-series-1: var(--pink);
+  --iq-series-2: var(--tile-blue);
+  --iq-context: var(--muted);
+  --iq-grid: var(--border);
+  --iq-baseline: #c6cbdf;
+  --iq-up: #0a7a50;
+  --iq-down: var(--danger);
+
+  line-height: 1.45;
+
+  :focus-visible {
+    outline: 3px solid var(--pink);
+  }
+}
+
+/* Lo enfocado con Tab no debe quedar debajo del aviso fijo. */
+html:has(.iq-banner) {
+  scroll-padding-top: 96px;
+}
+
+/* ---------- Aviso de cifras de ejemplo ---------- */
+
+.iq-banner-slot {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.iq-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--navy);
+  background: var(--tile-orange);
+  box-shadow: 0 6px 16px -8px rgba(5, 11, 38, 0.5);
+
+  svg {
+    flex: none;
+  }
+
+  strong {
+    font-weight: 700;
+  }
+
+  @media (max-width: 480px) {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+}
+
+/* ---------- Encabezado ---------- */
+
+.hero.iq-hero {
+  padding-bottom: 96px;
+}
+
+.iq-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 8px 20px 8px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+
+  @media (max-width: 600px) {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+    padding-right: 14px;
+  }
+}
+
+.iq-header__back {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px 0 10px;
+  border: 0;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.24);
+  }
+
+  svg {
+    flex: none;
+  }
+
+  &:focus-visible {
+    outline-color: #fff;
+  }
+}
+
+.iq-header__back-short {
+  display: none;
+}
+
+.iq-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  img {
+    display: block;
+    height: 25px;
+    width: auto;
+  }
+
+  @media (max-width: 600px) {
+    justify-self: end;
+  }
+
+  @media (max-width: 480px) {
+    gap: 6px;
+
+    img {
+      height: 18px;
+    }
+  }
+}
+
+.iq-header__iq {
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-family: var(--heading);
+  font-weight: 700;
+  font-size: 15px;
+  color: #fff;
+  background: var(--pink-dark);
+}
+
+.iq-header__name {
+  justify-self: end;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--heading);
+  font-weight: 500;
+  font-size: 14px;
+  color: #fff;
+
+  @media (max-width: 600px) {
+    display: none;
+  }
+}
+
+@media (max-width: 380px) {
+  .iq-header__back-long {
+    display: none;
+  }
+
+  .iq-header__back-short {
+    display: inline;
+  }
+}
+
+.iq-hero__content {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px 4px 0;
+
+  h1 {
+    color: #fff;
+    font-size: clamp(32px, 5vw, 44px);
+    line-height: 1.1;
+    margin-bottom: 4px;
+
+    &:focus {
+      outline: none;
+    }
+  }
+
+  > p {
+    font-size: 17px;
+  }
+}
+
+.iq-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* El tono de marca no llega a 4.5:1 como texto: la seleccionada usa el oscuro. */
+.iq-tabs .segmented__option,
+.iq-source .segmented__option {
+  min-height: 40px;
+
+  &[aria-selected='true'],
+  &[aria-checked='true'] {
+    color: var(--pink-dark);
+  }
+
+  /* Por fuera quedaría sobre el fondo oscuro de la cabecera. */
+  &:focus-visible {
+    outline-offset: -3px;
+  }
+}
+
+.iq-tabs .segmented__option {
+  padding: 8px 18px;
+  font-family: var(--heading);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.iq-scope {
+  max-width: 720px;
+  margin-top: 14px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ---------- Contenido ---------- */
+
+.iq-main {
+  display: grid;
+  gap: 16px;
+  max-width: 1120px;
+  margin: -72px auto 0;
+  padding: 0 16px;
+}
+
+.iq-panel {
+  min-width: 0;
+  transition: opacity 0.2s;
+
+  /* Mantiene el cuadro anterior mientras llega el nuevo, sin saltos. */
+  &[aria-busy='true'] {
+    opacity: 0.55;
+  }
+}
+
+.iq-business {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+
+  @media (max-width: 860px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.iq-market {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  align-items: start;
+  gap: 16px;
+
+  @media (max-width: 860px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.iq-wide,
+.iq-summary {
+  grid-column: 1 / -1;
+}
+
+/* ---------- Avisos ---------- */
+
+.card.iq-locked {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 20px 24px;
+
+  h2 {
+    font-size: 20px;
+    line-height: 1.2;
+    margin-bottom: 2px;
+  }
+
+  p {
+    font-size: 15px;
+  }
+
+  @media (max-width: 600px) {
+    padding: 16px 20px;
+  }
+}
+
+.iq-locked__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  color: var(--pink-dark);
+  background: var(--pink-bg);
+}
+
+.iq-notice {
+  padding: 14px 20px;
+  border-radius: var(--radius);
+  border-left: 4px solid var(--tile-blue);
+  font-size: 15px;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+
+  strong {
+    color: var(--text-h);
+  }
+}
+
+/* ---------- Resumen ---------- */
+
+.iq-summary {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.iq-summary__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  h2 {
+    font-size: 20px;
+    line-height: 1.2;
+  }
+}
+
+.iq-tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+
+  @media (max-width: 1180px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  @media (max-width: 600px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.iq-tile {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+
+  /* Ventas y pedidos traen el monto más largo y el cambio contra el periodo. */
+  &:nth-child(-n + 2) {
+    @media (max-width: 1180px) {
+      grid-column: span 2;
+    }
+  }
+
+  /* En un teléfono cada dato es una fila: en media columna, un monto en
+     bolívares se partiría a la mitad del número. */
+  @media (max-width: 480px) {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0 12px;
+    padding: 10px 14px;
+  }
+}
+
+.iq-tile__label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.iq-tile__value {
+  font-family: var(--heading);
+  font-weight: 600;
+  font-size: 26px;
+  line-height: 1.15;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+
+  @media (max-width: 480px) {
+    margin-left: auto;
+    font-size: 22px;
+  }
+}
+
+.iq-tile .iq-tile__value--long {
+  font-size: 19px;
+  line-height: 1.5;
+}
+
+.iq-tile .iq-tile__value--longer {
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.iq-tile__delta {
+  font-size: 13px;
+  color: var(--text);
+
+  @media (max-width: 480px) {
+    flex-basis: 100%;
+  }
+}
+
+.iq-tile__delta--up {
+  color: var(--iq-up);
+}
+
+.iq-tile__delta--down {
+  color: var(--iq-down);
+}
+
+/* ---------- Tarjetas ---------- */
+
+.card.iq-card {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+  padding: 24px;
+
+  @media (max-width: 600px) {
+    padding: 20px 16px;
+  }
+}
+
+.iq-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+
+  > div {
+    min-width: 0;
+  }
+
+  h2 {
+    font-size: 20px;
+    line-height: 1.2;
+  }
+
+  p {
+    margin-top: 2px;
+    font-size: 15px;
+    color: var(--text);
+  }
+}
+
+.text-button.iq-card__toggle {
+  justify-self: start;
+  min-height: 32px;
+  margin-left: -10px;
+  color: var(--pink-dark);
+}
+
+.iq-tag {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy);
+  background: var(--tile-orange);
+}
+
+.iq-empty {
+  padding: 28px 0;
+  text-align: center;
+  color: var(--text);
+}
+
+.iq-note {
+  font-size: 14px;
+  color: var(--text);
+}
+
+/* ---------- Gráficas ---------- */
+
+.iq-plot {
+  position: relative;
+  min-width: 0;
+  border-radius: 8px;
+  /* El arrastre horizontal recorre la gráfica sin bloquear el scroll vertical. */
+  touch-action: pan-y;
+
+  svg {
+    display: block;
+  }
+}
+
+.iq-grid {
+  stroke: var(--iq-grid);
+  stroke-width: 1;
+}
+
+.iq-baseline {
+  stroke: var(--iq-baseline);
+  stroke-width: 1;
+}
+
+.iq-tick {
+  font-size: 12px;
+  fill: var(--text);
+  font-variant-numeric: tabular-nums;
+  /* Sobre la gráfica: el halo lo separa de la línea. */
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 3px;
+}
+
+.iq-tick--plain {
+  stroke: none;
+}
+
+.iq-label {
+  font-size: 13px;
+  font-weight: 700;
+  fill: var(--text-h);
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 3px;
+}
+
+.iq-line {
+  fill: none;
+  stroke: var(--iq-series-1);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.iq-area {
+  fill: var(--iq-series-1);
+  fill-opacity: 0.1;
+}
+
+.iq-dot {
+  fill: var(--iq-series-1);
+  stroke: var(--surface);
+  stroke-width: 2;
+  paint-order: stroke;
+}
+
+.iq-crosshair {
+  stroke: var(--iq-baseline);
+  stroke-width: 1;
+}
+
+.iq-column {
+  fill: var(--iq-context);
+  transition: fill 0.15s;
+}
+
+.iq-column--peak {
+  fill: var(--iq-series-1);
+}
+
+.iq-column--active {
+  fill: var(--navy-2);
+}
+
+.iq-column--peak.iq-column--active {
+  fill: var(--pink-dark);
+}
+
+/* ---------- Detalle al pasar el cursor ---------- */
+
+.iq-tooltip {
+  position: absolute;
+  z-index: 20;
+  bottom: calc(100% - 22px);
+  width: max-content;
+  max-width: min(220px, 100%);
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  pointer-events: none;
+  overflow-wrap: anywhere;
+
+  > strong {
+    display: block;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  dl {
+    margin: 2px 0 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  dl > div {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* El valor manda: el lector ya sabe qué serie mira. */
+  dd {
+    order: -1;
+    margin: 0;
+    font-weight: 700;
+    color: var(--text-h);
+  }
+
+  dt {
+    color: var(--text);
+  }
+}
+
+.iq-tooltip--row {
+  right: 0;
+  bottom: calc(100% - 6px);
+}
+
+.iq-key {
+  order: -2;
+  flex: none;
+  width: 12px;
+  height: 2px;
+  border-radius: 2px;
+}
+
+.iq-key--1 {
+  background: var(--iq-series-1);
+}
+
+.iq-key--2 {
+  background: var(--iq-series-2);
+}
+
+.iq-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 14px;
+  color: var(--text-h);
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+.iq-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.iq-swatch--1 {
+  background: var(--iq-series-1);
+}
+
+.iq-swatch--2 {
+  background: var(--iq-series-2);
+}
+
+/* ---------- Barras horizontales ---------- */
+
+.iq-rows {
+  min-width: 0;
+  border-radius: 8px;
+}
+
+.iq-bar {
+  display: block;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+}
+
+.iq-bar--1 {
+  background: var(--iq-series-1);
+}
+
+.iq-bar--2 {
+  background: var(--iq-series-2);
+}
+
+.iq-ranked {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+
+  li {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 2px 12px;
+    padding: 2px 0;
+  }
+}
+
+/* Si un monto largo no deja sitio, baja a su propia línea y el nombre conserva
+   el ancho completo. */
+.iq-ranked__name {
+  flex: 1 1 55%;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
+.iq-ranked__value {
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--text);
+  text-align: right;
+}
+
+.iq-ranked__track {
+  flex: 0 0 100%;
+  height: 10px;
+}
+
+.iq-row--active .iq-bar {
+  filter: saturate(0.8) brightness(0.9);
+}
+
+.iq-compare {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 18px;
+
+  li {
+    position: relative;
+    display: grid;
+    gap: 4px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  li:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  h3 {
+    font-size: 17px;
+    line-height: 1.25;
+  }
+
+  p {
+    font-size: 15px;
+    color: var(--text);
+  }
+}
+
+.iq-compare__row {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+
+  strong {
+    font-weight: 700;
+    color: var(--text-h);
+    white-space: nowrap;
+  }
+}
+
+.iq-compare__track {
+  height: 14px;
+}
+
+/* ---------- Tabla gemela ---------- */
+
+.iq-table {
+  min-width: 0;
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  th,
+  td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+  }
+
+  th:first-child {
+    padding-left: 0;
+    text-align: left;
+  }
+
+  th:last-child,
+  td:last-child {
+    padding-right: 0;
+  }
+
+  thead th {
+    font-weight: 500;
+    color: var(--text-h);
+  }
+}
+
+/* ---------- Listas ---------- */
+
+.iq-unsold {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  li {
+    min-width: 0;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    color: var(--text-h);
+    background: var(--bg);
+    overflow-wrap: anywhere;
+  }
+}
+
+.iq-stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+
+  @media (max-width: 860px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  li {
+    display: grid;
+    align-content: start;
+    gap: 2px;
+    min-width: 0;
+    padding: 14px;
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+  }
+
+  /* Son premios, no clientes: tampoco queda suelto en una columna. */
+  li:last-child {
+    @media (max-width: 860px) {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
+.iq-stats__value {
+  font-family: var(--heading);
+  font-weight: 600;
+  font-size: 26px;
+  line-height: 1.15;
+  color: var(--text-h);
+}
+
+.iq-stats__label {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.iq-stats__text {
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* ---------- Mercado ---------- */
+
+.card.iq-group {
+  display: grid;
+  gap: 12px;
+  padding: 24px;
+
+  @media (max-width: 600px) {
+    padding: 20px 16px;
+  }
+}
+
+.iq-group__privacy {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-h);
+  background: var(--bg);
+}
+
+.iq-unavailable {
+  display: grid;
+  gap: 8px;
+
+  h2 {
+    font-size: 22px;
+    line-height: 1.2;
+  }
+}
+
+.iq-unavailable__reason {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--text-h);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Preferencias del sistema ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .iq-panel,
+  .iq-column {
+    transition: none;
+  }
+}
+
+/* En alto contraste desaparecen los fondos: las barras los recuperan y el aviso
+   de ejemplo se separa con un borde. */
+@media (forced-colors: active) {
+  .iq-bar,
+  .iq-swatch,
+  .iq-key {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+
+  .iq-banner {
+    border-bottom: 3px solid CanvasText;
+  }
+}
