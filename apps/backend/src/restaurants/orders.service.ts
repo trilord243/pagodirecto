@@ -4,6 +4,7 @@ import type { Queryable } from '../database/database.service.js';
 import { LoyaltyService } from './loyalty.service.js';
 import type { CardUpdate } from './loyalty.service.js';
 import type { PlaceOrderInput } from './restaurant.schemas.js';
+import { WalletService } from './wallet.service.js';
 
 // El mensaje de este error se le muestra al agente, y el agente al cliente.
 export class OrderRejectedError extends Error {}
@@ -25,6 +26,9 @@ export interface OrderSummary {
   discount: number;
   total: number;
   currency: string;
+  paid: boolean;
+  walletBalance: number | null;
+  card: CardUpdate | null;
 }
 
 export interface OrderQuote {
@@ -36,6 +40,7 @@ export interface OrderQuote {
   currency: string;
   reward: { id: number; name: string } | null;
   rewardApplied: boolean;
+  walletBalance: number;
 }
 
 export interface PublicOrder {
@@ -83,7 +88,8 @@ const ORDER_ITEMS = `
 const ORDER_COLUMNS = `
   o.id, o.customer_name, o.customer_phone, o.notes, o.status, o.payment_status,
   o.public_token, o.subtotal::float8 as subtotal, o.discount::float8 as discount,
-  o.promotion_name, o.reward_redeemed, o.total::float8 as total, o.currency,
+  o.promotion_name, o.reward_redeemed, o.payment_method, o.refunded,
+  o.total::float8 as total, o.currency,
   o.created_at, ${ORDER_ITEMS}`;
 
 const toCents = (price: string) => Math.round(Number(price) * 100);
@@ -93,6 +99,7 @@ export class OrdersService {
   constructor(
     private readonly db: DatabaseService,
     private readonly loyalty: LoyaltyService,
+    private readonly wallet: WalletService,
   ) {}
 
   // Precios y descuentos salen siempre de la base de datos: el agente solo dice
@@ -189,6 +196,11 @@ export class OrdersService {
       currency: priced.restaurant.currency,
       reward: priced.reward,
       rewardApplied: priced.rewardApplied,
+      walletBalance: await this.wallet.balance(
+        this.db,
+        phone,
+        priced.restaurant.currency,
+      ),
     };
   }
 
@@ -240,6 +252,27 @@ export class OrdersService {
         );
       }
 
+      // Sin saldo suficiente el pedido queda pendiente y se paga por el enlace.
+      const walletBalance = input.usar_wallet
+        ? await this.wallet.charge(
+            tx,
+            phone,
+            restaurant.currency,
+            totalCents / 100,
+            order.id,
+          )
+        : null;
+      const paid = walletBalance !== null;
+      if (paid) {
+        await tx.query(
+          `update orders
+              set payment_status = 'paid', payment_method = 'wallet',
+                  loyalty_counted = true
+            where id = $1`,
+          [order.id],
+        );
+      }
+
       return {
         id: order.id,
         restaurant: restaurant.name,
@@ -248,6 +281,11 @@ export class OrdersService {
         discount: priced.discountCents / 100,
         total: totalCents / 100,
         currency: restaurant.currency,
+        paid,
+        walletBalance,
+        card: paid
+          ? await this.loyalty.registerPurchase(tx, restaurant.id, phone)
+          : null,
       };
     });
   }
@@ -274,17 +312,51 @@ export class OrdersService {
       const { rows: current } = await tx.query<{
         customer_phone: string;
         loyalty_counted: boolean;
+        payment_method: string | null;
+        refunded: boolean;
+        total: number;
+        currency: string;
       }>(
-        `select customer_phone, loyalty_counted from orders
+        `select customer_phone, loyalty_counted, payment_method, refunded,
+                total::float8 as total, currency
+           from orders
           where restaurant_id = $1 and id = $2
           for update`,
         [restaurantId, orderId],
       );
-      if (!current[0]) {
+      const order = current[0];
+      if (!order) {
         throw new NotFoundException('Pedido no encontrado');
       }
-      const counts =
-        patch.paymentStatus === 'paid' && !current[0].loyalty_counted;
+      const counts = patch.paymentStatus === 'paid' && !order.loyalty_counted;
+
+      // Cancelar lo que ya se cobro del wallet devuelve el dinero al cliente.
+      const refund =
+        patch.status === 'cancelled' &&
+        order.payment_method === 'wallet' &&
+        !order.refunded;
+      if (refund) {
+        await this.wallet.credit(
+          tx,
+          order.customer_phone,
+          order.currency,
+          order.total,
+          'refund',
+          orderId,
+        );
+        await this.loyalty.reversePurchase(
+          tx,
+          restaurantId,
+          order.customer_phone,
+        );
+        await tx.query(
+          `update orders
+              set refunded = true, payment_status = 'pending',
+                  loyalty_counted = false
+            where id = $1`,
+          [orderId],
+        );
+      }
 
       const { rows } = await tx.query(
         `update orders o
@@ -306,7 +378,7 @@ export class OrdersService {
         ? await this.loyalty.registerPurchase(
             tx,
             restaurantId,
-            current[0].customer_phone,
+            order.customer_phone,
           )
         : null;
       return { order: rows[0], card };

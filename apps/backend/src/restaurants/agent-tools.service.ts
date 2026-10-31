@@ -7,6 +7,7 @@ import { formatMoney } from './order-page.js';
 import { OrderRejectedError, OrdersService } from './orders.service.js';
 import type { Customer } from './orders.service.js';
 import { PlaceOrderSchema, SendOptionsSchema } from './restaurant.schemas.js';
+import { WalletService } from './wallet.service.js';
 import {
   renderLoyaltyCard,
   renderQr,
@@ -20,6 +21,7 @@ export const SEND_OPTIONS_TOOL = 'enviar_opciones';
 export const QUOTE_ORDER_TOOL = 'calcular_pedido';
 export const PLACE_ORDER_TOOL = 'crear_pedido';
 export const SEND_CARD_TOOL = 'ver_tarjeta';
+export const SHOW_BALANCE_TOOL = 'ver_saldo';
 
 // Estas herramientas le envian algo al cliente por si solas.
 export const MESSAGE_TOOLS = new Set([
@@ -44,6 +46,7 @@ export class RestaurantAgentTools {
     private readonly db: DatabaseService,
     private readonly loyalty: LoyaltyService,
     private readonly orders: OrdersService,
+    private readonly wallet: WalletService,
     private readonly whatsapp: WhatsappApiService,
   ) {}
 
@@ -67,6 +70,8 @@ export class RestaurantAgentTools {
         return JSON.stringify(await this.quoteOrder(customer, input));
       case PLACE_ORDER_TOOL:
         return JSON.stringify(await this.placeOrder(customer, input));
+      case SHOW_BALANCE_TOOL:
+        return JSON.stringify(await this.wallet.balances(customer.phone));
       case SEND_CARD_TOOL:
         return JSON.stringify(
           await this.sendCard(customer.phone, String(input.restaurante)),
@@ -192,6 +197,8 @@ export class RestaurantAgentTools {
         moneda: quote.currency,
         premio_disponible: quote.reward?.name ?? null,
         premio_incluido: quote.rewardApplied,
+        saldo_wallet: quote.walletBalance,
+        wallet_alcanza: quote.walletBalance >= quote.total,
       };
     } catch (error) {
       if (error instanceof OrderRejectedError) {
@@ -227,6 +234,15 @@ export class RestaurantAgentTools {
       moneda: order.currency,
       enlace: url,
     };
+    if (order.paid) {
+      if (order.card) {
+        await this.loyalty.notifyStamp(
+          { name: order.restaurant },
+          order.card,
+        );
+      }
+      return { ...result, pagado: true, saldo_restante: order.walletBalance };
+    }
     // El pedido ya existe: un fallo aqui no puede volver como error, o el
     // agente lo crearia de nuevo.
     try {
@@ -235,10 +251,10 @@ export class RestaurantAgentTools {
         await renderQr(url),
         `Pedido ${order.id} en ${order.restaurant}\nTotal: ${formatMoney(order.total, order.currency)}\n\nEscanea el QR o abre este enlace:\n${url}`,
       );
-      return { ...result, qr_enviado: true };
+      return { ...result, pagado: false, qr_enviado: true };
     } catch (error) {
       this.logger.error(`QR del pedido ${order.id}: ${String(error)}`);
-      return { ...result, qr_enviado: false };
+      return { ...result, pagado: false, qr_enviado: false };
     }
   }
 }

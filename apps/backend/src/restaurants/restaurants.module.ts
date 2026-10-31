@@ -18,6 +18,7 @@ import { OrdersController } from './orders.controller.js';
 import { OrdersService } from './orders.service.js';
 import { PublicOrderController } from './public-order.controller.js';
 import { RestaurantAuthGuard } from './restaurant-auth.guard.js';
+import { WalletService } from './wallet.service.js';
 
 @Module({
   imports: [WhatsappApiModule],
@@ -39,6 +40,7 @@ import { RestaurantAuthGuard } from './restaurant-auth.guard.js';
     OrdersService,
     RestaurantAgentTools,
     RestaurantAuthGuard,
+    WalletService,
   ],
   exports: [RestaurantAgentTools],
 })

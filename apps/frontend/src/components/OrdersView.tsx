@@ -219,7 +219,8 @@ function OrderCard({ token, order, onUpdated }: OrderCardProps) {
 
         {order.payment_status === 'paid' ? (
           <span className="order__paid">
-            <CheckIcon width={14} height={14} /> Pagado
+            <CheckIcon width={14} height={14} />{' '}
+            {order.payment_method === 'wallet' ? 'Pagado con wallet' : 'Pagado'}
           </span>
         ) : (
           <button

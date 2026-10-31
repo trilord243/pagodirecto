@@ -354,6 +354,17 @@ export class LoyaltyService {
     };
   }
 
+  // Un pedido cancelado deja de contar. El premio ya ganado no se retira.
+  async reversePurchase(db: Queryable, restaurantId: number, phone: string) {
+    await db.query(
+      `update loyalty_cards
+          set purchases = greatest(purchases - 1, 0),
+              stamps = greatest(stamps - 1, 0)
+        where restaurant_id = $1 and customer_phone = $2`,
+      [restaurantId, phone],
+    );
+  }
+
   // Si WhatsApp falla, la compra ya quedo contada: no se le avisa y ya.
   async notifyStamp(restaurant: { name: string }, card: CardUpdate) {
     try {

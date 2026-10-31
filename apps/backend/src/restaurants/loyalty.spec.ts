@@ -23,6 +23,7 @@ import { hashPassword } from './passwords.js';
 import { PublicOrderController } from './public-order.controller.js';
 import { RestaurantAuthGuard } from './restaurant-auth.guard.js';
 import { restaurantPublicId } from './restaurant-id.js';
+import { WalletService } from './wallet.service.js';
 import { renderLoyaltyCard } from './whatsapp-images.js';
 
 const PASSWORD = 'clave-de-prueba';
@@ -128,6 +129,7 @@ describe('fidelidad y promociones', () => {
         OrdersService,
         RestaurantAgentTools,
         RestaurantAuthGuard,
+        WalletService,
         { provide: MenuAnalyzerService, useValue: {} },
         {
           provide: MENU_ANALYZER_CLIENT,
@@ -428,6 +430,137 @@ describe('fidelidad y promociones', () => {
         nombre: 'Semana feliz',
         porcentaje: 10,
       });
+    });
+  });
+
+  describe('wallet', () => {
+    const topUp = (amount: number, phone = CUSTOMER.phone) =>
+      app
+        .get(WalletService)
+        .credit(pgliteDatabase(lite), phone, 'USD', amount, 'topup');
+    const balance = async (phone = CUSTOMER.phone) =>
+      app.get(WalletService).balance(pgliteDatabase(lite), phone, 'USD');
+    const quote = () =>
+      run('calcular_pedido', {
+        restaurante: ID_A,
+        items: [{ item_id: arepa.id, cantidad: 2 }],
+      });
+
+    it('informa si el saldo alcanza', async () => {
+      expect(await quote()).toMatchObject({
+        saldo_wallet: 0,
+        wallet_alcanza: false,
+      });
+
+      await topUp(20);
+
+      expect(await quote()).toMatchObject({
+        saldo_wallet: 20,
+        wallet_alcanza: true,
+      });
+    });
+
+    it('con saldo cobra, marca pagado y no envia QR', async () => {
+      await topUp(50);
+
+      const result = await order({ usar_wallet: true });
+
+      expect(result).toMatchObject({ pagado: true, saldo_restante: 30 });
+      expect(sendImage).not.toHaveBeenCalled();
+      const { body } = await asA(api().get('/restaurants/orders'));
+      expect(body[0]).toMatchObject({
+        payment_status: 'paid',
+        payment_method: 'wallet',
+      });
+    });
+
+    it('sin saldo suficiente no cobra y envia el enlace', async () => {
+      await topUp(5);
+
+      const result = await order({ usar_wallet: true });
+
+      expect(result).toMatchObject({ pagado: false, qr_enviado: true });
+      expect(await balance()).toBe(5);
+      expect(sendImage).toHaveBeenCalledTimes(1);
+      expect(sendImage.mock.calls[0][2]).toContain(result.enlace);
+    });
+
+    it('solo cobra si el cliente escogio el wallet', async () => {
+      await topUp(50);
+
+      const result = await order();
+
+      expect(result.pagado).toBe(false);
+      expect(await balance()).toBe(50);
+    });
+
+    it('cobra el total con descuento', async () => {
+      await topUp(50);
+      await asA(api().post('/restaurants/promotions')).send({
+        name: 'Semana feliz',
+        percent: 10,
+      });
+
+      await order({ usar_wallet: true });
+
+      expect(await balance()).toBe(32);
+    });
+
+    it('al pagar suma el ojito y envia la foto de la tarjeta', async () => {
+      await setProgram(3);
+      await topUp(50);
+
+      await order({ usar_wallet: true });
+
+      const { body } = await asA(api().get('/restaurants/loyalty'));
+      expect(body.customers[0]).toMatchObject({ stamps: 1, purchases: 1 });
+      expect(sendImage).toHaveBeenCalledTimes(1);
+      expect(sendImage.mock.calls[0][2]).toContain('Llevas 1 de 3');
+    });
+
+    it('marcarlo pagado despues no suma otro ojito', async () => {
+      await setProgram(3);
+      await topUp(50);
+      const { pedido } = await order({ usar_wallet: true });
+
+      await pay(pedido);
+
+      const { body } = await asA(api().get('/restaurants/loyalty'));
+      expect(body.customers[0].stamps).toBe(1);
+    });
+
+    it('cancelar devuelve el dinero y quita el ojito una sola vez', async () => {
+      await setProgram(3);
+      await topUp(50);
+      const { pedido } = await order({ usar_wallet: true });
+      const cancel = () =>
+        asA(api().patch(`/restaurants/orders/${pedido}`))
+          .send({ status: 'cancelled' })
+          .expect(200);
+
+      await cancel();
+      await cancel();
+
+      expect(await balance()).toBe(50);
+      const { body } = await asA(api().get('/restaurants/loyalty'));
+      expect(body.customers[0]).toMatchObject({ stamps: 0, purchases: 0 });
+    });
+
+    it('cada numero tiene su propio saldo', async () => {
+      await topUp(50);
+
+      const result = await order({ usar_wallet: true }, OTHER);
+
+      expect(result.pagado).toBe(false);
+      expect(await balance()).toBe(50);
+    });
+
+    it('el agente consulta el saldo del cliente', async () => {
+      await topUp(12.5);
+
+      expect(await run('ver_saldo', {})).toEqual([
+        { moneda: 'USD', saldo: 12.5 },
+      ]);
     });
   });
 

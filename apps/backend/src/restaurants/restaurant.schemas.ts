@@ -93,6 +93,7 @@ export const PlaceOrderSchema = z.object({
   restaurante: z.string().trim().toUpperCase().min(1).max(20),
   notas: z.string().trim().max(500).nullish(),
   usar_recompensa: z.boolean().optional(),
+  usar_wallet: z.boolean().optional(),
   items: z
     .array(
       z.object({

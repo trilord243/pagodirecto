@@ -17,6 +17,8 @@ export interface Order {
   notes: string | null
   status: OrderStatus
   payment_status: PaymentStatus
+  payment_method: 'wallet' | null
+  refunded: boolean
   subtotal: number
   discount: number
   promotion_name: string | null

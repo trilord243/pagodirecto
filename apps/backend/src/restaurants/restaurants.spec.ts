@@ -26,6 +26,7 @@ import { hashPassword, verifyPassword } from './passwords.js';
 import { PublicOrderController } from './public-order.controller.js';
 import { RestaurantAuthGuard } from './restaurant-auth.guard.js';
 import { restaurantPublicId } from './restaurant-id.js';
+import { WalletService } from './wallet.service.js';
 import { renderQr, renderRestaurantsImage } from './whatsapp-images.js';
 
 const PASSWORD = 'clave-de-prueba';
@@ -124,6 +125,7 @@ describe('restaurantes', () => {
         OrdersService,
         RestaurantAgentTools,
         RestaurantAuthGuard,
+        WalletService,
         { provide: MenuAnalyzerService, useValue: { analyze } },
         { provide: DatabaseService, useValue: pgliteDatabase(lite) },
         {

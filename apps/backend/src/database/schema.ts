@@ -110,6 +110,27 @@ alter table orders add column if not exists reward_redeemed boolean not null def
 
 alter table restaurants add column if not exists insights_enabled boolean not null default false;
 
+create table if not exists wallets (
+  customer_phone text not null,
+  currency text not null,
+  balance numeric(12, 2) not null default 0 check (balance >= 0),
+  updated_at timestamptz not null default now(),
+  primary key (customer_phone, currency)
+);
+
+create table if not exists wallet_transactions (
+  id integer generated always as identity primary key,
+  customer_phone text not null,
+  currency text not null,
+  amount numeric(12, 2) not null,
+  kind text not null check (kind in ('topup', 'order_payment', 'refund')),
+  order_id integer references orders (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table orders add column if not exists payment_method text;
+alter table orders add column if not exists refunded boolean not null default false;
+
 create table if not exists restaurant_insights (
   id integer generated always as identity primary key,
   restaurant_id integer not null references restaurants (id) on delete cascade,
