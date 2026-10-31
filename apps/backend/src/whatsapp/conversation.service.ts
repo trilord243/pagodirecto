@@ -80,7 +80,10 @@ export class ConversationService {
     }
     // Si Odoo no responde, el error corta aqui: mejor callar que pisar a un
     // asesor que esta atendiendo.
-    if (!(await this.odoo.canAgentReply(message.from))) {
+    if (
+      readConfig().odooGuard &&
+      !(await this.odoo.canAgentReply(message.from))
+    ) {
       this.logger.log(`Conversacion ${key}: la atiende una persona`);
       return;
     }

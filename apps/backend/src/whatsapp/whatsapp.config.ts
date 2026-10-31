@@ -15,6 +15,8 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
     ),
     maxMessagesPerHour: Number(env.WHATSAPP_MAX_MESSAGES_PER_HOUR ?? 30),
     handoffHours: Number(env.WHATSAPP_HANDOFF_HOURS ?? 12),
+    // En false Claude responde sin mirar si un asesor atiende el chat en Odoo.
+    odooGuard: env.WHATSAPP_ODOO_GUARD !== 'false',
     // Horas que Claude se abstiene tras el ultimo mensaje de un asesor.
     humanHours: Number(env.WHATSAPP_HUMAN_HOURS ?? 12),
     odooDbHost: env.ODOO_DB_HOST ?? '/var/run/postgresql',

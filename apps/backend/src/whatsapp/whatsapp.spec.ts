@@ -277,6 +277,16 @@ describe('whatsapp', () => {
       expect(sendText).not.toHaveBeenCalled();
     });
 
+    it('con el control de Odoo apagado responde sin consultarlo', async () => {
+      vi.stubEnv('WHATSAPP_ODOO_GUARD', 'false');
+      canAgentReply.mockResolvedValue(false);
+
+      await conversations.enqueue(textMessage('wamid.1'));
+
+      expect(canAgentReply).not.toHaveBeenCalled();
+      expect(sendText).toHaveBeenCalledWith(CUSTOMER, 'Hola');
+    });
+
     it('calla si no puede leer el estado en Odoo', async () => {
       canAgentReply.mockRejectedValue(new Error('sin base de datos'));
 
