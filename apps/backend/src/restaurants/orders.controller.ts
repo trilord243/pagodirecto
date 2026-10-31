@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Restaurant } from './auth.service.js';
+import { LoyaltyService } from './loyalty.service.js';
 import { OrdersService } from './orders.service.js';
 import {
   CurrentRestaurant,
@@ -18,7 +19,10 @@ import { parseBody, UpdateOrderSchema } from './restaurant.schemas.js';
 @Controller('restaurants/orders')
 @UseGuards(RestaurantAuthGuard)
 export class OrdersController {
-  constructor(private readonly orders: OrdersService) {}
+  constructor(
+    private readonly loyalty: LoyaltyService,
+    private readonly orders: OrdersService,
+  ) {}
 
   @Get()
   list(@CurrentRestaurant() restaurant: Restaurant) {
@@ -26,15 +30,19 @@ export class OrdersController {
   }
 
   @Patch(':id')
-  update(
+  async update(
     @CurrentRestaurant() restaurant: Restaurant,
     @Param('id', ParseIntPipe) id: number,
     @Body() body: unknown,
   ) {
-    return this.orders.update(
+    const { order, card } = await this.orders.update(
       restaurant.id,
       id,
       parseBody(UpdateOrderSchema, body),
     );
+    if (card) {
+      void this.loyalty.notifyStamp(restaurant, card);
+    }
+    return order;
   }
 }

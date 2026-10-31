@@ -70,4 +70,53 @@ alter table orders add column if not exists public_token text not null
 create unique index if not exists orders_public_token on orders (public_token);
 alter table orders add column if not exists payment_status text not null
   default 'pending' check (payment_status in ('pending', 'paid'));
+
+create table if not exists loyalty_programs (
+  restaurant_id integer primary key references restaurants (id) on delete cascade,
+  stamps_required integer not null check (stamps_required between 2 and 20),
+  reward_item_id integer references menu_items (id) on delete set null,
+  active boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists loyalty_cards (
+  restaurant_id integer not null references restaurants (id) on delete cascade,
+  customer_phone text not null,
+  stamps integer not null default 0,
+  rewards_available integer not null default 0,
+  purchases integer not null default 0,
+  primary key (restaurant_id, customer_phone)
+);
+
+create table if not exists promotions (
+  id integer generated always as identity primary key,
+  restaurant_id integer not null references restaurants (id) on delete cascade,
+  name text not null,
+  percent numeric(5, 2) not null check (percent > 0 and percent <= 100),
+  min_purchases integer not null default 0 check (min_purchases >= 0),
+  min_total numeric(12, 2) not null default 0 check (min_total >= 0),
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists promotions_restaurant on promotions (restaurant_id);
+
+alter table orders add column if not exists subtotal numeric(12, 2);
+update orders set subtotal = total where subtotal is null;
+alter table orders add column if not exists discount numeric(12, 2) not null default 0;
+alter table orders add column if not exists promotion_name text;
+alter table orders add column if not exists loyalty_counted boolean not null default false;
+alter table orders add column if not exists reward_redeemed boolean not null default false;
+
+alter table restaurants add column if not exists insights_enabled boolean not null default false;
+
+create table if not exists restaurant_insights (
+  id integer generated always as identity primary key,
+  restaurant_id integer not null references restaurants (id) on delete cascade,
+  result jsonb not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists restaurant_insights_recent
+  on restaurant_insights (restaurant_id, created_at desc);
 `;

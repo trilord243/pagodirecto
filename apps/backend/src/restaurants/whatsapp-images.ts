@@ -53,6 +53,64 @@ export async function renderQr(url: string): Promise<Buffer> {
     .toBuffer();
 }
 
+const CARD_COLUMNS = 5;
+const CARD_EYE_SIZE = 150;
+const CARD_EYE_GAP = 38;
+
+// Cada compra llena uno de los "ojitos": el circulo de la P de PagoDirecto.
+function renderEye(x: number, y: number, filled: boolean): string {
+  const radius = CARD_EYE_SIZE / 2;
+  const center = `cx="${x + radius}" cy="${y + radius}"`;
+  return filled
+    ? `<circle ${center} r="${radius}" fill="${PINK}"/>
+       <circle ${center} r="${radius * 0.42}" fill="${NAVY}"/>`
+    : `<circle ${center} r="${radius - 4}" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="8"/>`;
+}
+
+export interface LoyaltyCardImage {
+  restaurant: string;
+  stamps: number;
+  stampsRequired: number;
+  rewardName: string;
+  rewardsAvailable: number;
+}
+
+export async function renderLoyaltyCard({
+  restaurant,
+  stamps,
+  stampsRequired,
+  rewardName,
+  rewardsAvailable,
+}: LoyaltyCardImage): Promise<Buffer> {
+  const rows = Math.ceil(stampsRequired / CARD_COLUMNS);
+  const eyesTop = 300;
+  const height =
+    eyesTop + rows * (CARD_EYE_SIZE + CARD_EYE_GAP) + 150;
+  const eyes = Array.from({ length: stampsRequired }, (_, index) =>
+    renderEye(
+      72 + (index % CARD_COLUMNS) * (CARD_EYE_SIZE + CARD_EYE_GAP),
+      eyesTop + Math.floor(index / CARD_COLUMNS) * (CARD_EYE_SIZE + CARD_EYE_GAP),
+      index < stamps,
+    ),
+  ).join('');
+  const missing = stampsRequired - stamps;
+  const footer =
+    rewardsAvailable > 0
+      ? `¡Tienes tu premio listo: ${rewardName}!`
+      : `Te ${missing === 1 ? 'falta' : 'faltan'} ${missing} para tu premio: ${rewardName}`;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${height}" font-family="DejaVu Sans, sans-serif">
+    <rect width="${WIDTH}" height="${height}" fill="${NAVY}"/>
+    <text x="72" y="96" font-size="34" font-weight="bold" fill="${PINK}">PagoDirecto</text>
+    <text x="72" y="178" font-size="54" font-weight="bold" fill="#ffffff">${escapeXml(shorten(restaurant))}</text>
+    <text x="72" y="236" font-size="32" fill="#c7cce3">Tarjeta de fidelidad: ${stamps} de ${stampsRequired}</text>
+    ${eyes}
+    <text x="72" y="${height - 72}" font-size="32" font-weight="bold" fill="#ffffff">${escapeXml(footer.slice(0, 54))}</text>
+  </svg>`;
+
+  return sharp(Buffer.from(svg)).png().toBuffer();
+}
+
 export async function renderRestaurantsImage(
   restaurants: { id: string; name: string }[],
 ): Promise<Buffer> {

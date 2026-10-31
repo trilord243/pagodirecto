@@ -47,6 +47,7 @@ const PAGE = (title: string, body: string) => `<!doctype html>
   .name { color: var(--navy); font-weight: 600; }
   .unit { font-size: 14px; }
   .total { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 16px; border-top: 2px solid var(--navy); color: var(--navy); font-size: 22px; font-weight: 700; }
+  .line { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; overflow-wrap: anywhere; }
   .date { margin: 16px 0 0; font-size: 14px; }
 </style>
 </head>
@@ -60,8 +61,8 @@ export function renderOrderPage(order: PublicOrder): string {
     .map(
       (item) => `<tr>
         <td><div class="name">${item.quantity} × ${escapeHtml(item.name)}</div>
-        <div class="unit">${money(item.unit_price)} c/u</div></td>
-        <td class="amount">${money(item.unit_price * item.quantity)}</td>
+        <div class="unit">${item.unit_price === 0 ? 'Premio de tu tarjeta' : `${money(item.unit_price)} c/u`}</div></td>
+        <td class="amount">${item.unit_price === 0 ? 'Gratis' : money(item.unit_price * item.quantity)}</td>
       </tr>`,
     )
     .join('');
@@ -87,6 +88,12 @@ export function renderOrderPage(order: PublicOrder): string {
         <thead><tr><th scope="col">Producto</th><th scope="col" class="amount">Monto</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
+      ${
+        order.discount > 0
+          ? `<div class="line"><span>Subtotal</span><span>${money(order.subtotal)}</span></div>
+      <div class="line"><span>${escapeHtml(order.promotion_name ?? 'Descuento')}</span><span>-${money(order.discount)}</span></div>`
+          : ''
+      }
       <div class="total"><span>Total</span><span>${money(order.total)}</span></div>
       <p class="date">${escapeHtml(date)}</p>
     </main>`,

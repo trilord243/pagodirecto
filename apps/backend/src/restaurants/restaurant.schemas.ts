@@ -92,6 +92,7 @@ export const UpdateOrderSchema = z
 export const PlaceOrderSchema = z.object({
   restaurante: z.string().trim().toUpperCase().min(1).max(20),
   notas: z.string().trim().max(500).nullish(),
+  usar_recompensa: z.boolean().optional(),
   items: z
     .array(
       z.object({
@@ -104,6 +105,29 @@ export const PlaceOrderSchema = z.object({
 });
 
 export type PlaceOrderInput = z.infer<typeof PlaceOrderSchema>;
+
+export const LoyaltyProgramSchema = z.object({
+  stampsRequired: z.number().int().min(2).max(20),
+  rewardItemId: z.number().int().positive(),
+  active: z.boolean().default(true),
+});
+
+const PromotionSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  percent: z.number().positive().max(100),
+  minPurchases: z.number().int().min(0).max(1000).default(0),
+  minTotal: z.number().min(0).max(10_000_000).default(0),
+  active: z.boolean().default(true),
+});
+
+export type PromotionInput = z.infer<typeof PromotionSchema>;
+
+export const CreatePromotionSchema = PromotionSchema;
+
+export const UpdatePromotionSchema = PromotionSchema.partial().refine(
+  (patch) => Object.keys(patch).length > 0,
+  'Sin cambios',
+);
 
 export const SendOptionsSchema = z.object({
   texto: z.string().trim().min(1).max(1024),

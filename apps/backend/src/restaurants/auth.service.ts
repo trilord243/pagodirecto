@@ -12,7 +12,7 @@ const SESSION_DAYS = 7;
 // Sin esto, un usuario inexistente responderia mas rapido que uno real.
 const DECOY_HASH = hashPassword('usuario-inexistente');
 const RESTAURANT_COLUMNS =
-  'r.id, r.public_id as "restaurantId", r.name, r.username, r.currency';
+  'r.id, r.public_id as "restaurantId", r.name, r.username, r.currency, r.insights_enabled as "insightsEnabled"';
 
 export interface Restaurant {
   id: number;
@@ -20,6 +20,7 @@ export interface Restaurant {
   name: string;
   username: string;
   currency: string;
+  insightsEnabled: boolean;
 }
 
 interface RestaurantWithPassword extends Restaurant {
@@ -68,7 +69,8 @@ export class AuthService {
       `insert into restaurants (public_id, name, username, password_hash)
        values ($1, $2, $3, $4)
        on conflict do nothing
-       returning id, public_id as "restaurantId", name, username, currency`,
+       returning id, public_id as "restaurantId", name, username, currency,
+                 insights_enabled as "insightsEnabled"`,
       [
         restaurantPublicId(username),
         name,

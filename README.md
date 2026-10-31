@@ -52,12 +52,17 @@ Portal en `https://pedidos.example.com` y API en `https://pedidos.example.com/re
 | `POST /menu/items` | Agrega un plato |
 | `PATCH /menu/items/:id` | Edita un plato o su disponibilidad con `available` |
 | `DELETE /menu/items/:id` | Borra un plato |
+| `GET /loyalty` y `PUT /loyalty` | Tarjeta de fidelidad del comercio (`stampsRequired`, `rewardItemId`, `active`) y sus clientes |
+| `GET, POST /promotions` y `PATCH, DELETE /promotions/:id` | Promociones por porcentaje, con `minPurchases` y `minTotal` opcionales |
+| `GET, POST /insights` | Asesor de negocio con IA. Complemento que se activa con `restaurants.insights_enabled` |
 | `GET /orders` | Últimos 200 pedidos, con el teléfono del cliente |
 | `PATCH /orders/:id` | Cambia `status` (`pending`, `confirmed`, `ready`, `delivered`, `cancelled`) o `paymentStatus` (`pending`, `paid`) |
 
 Cada comercio tiene un ID `PD-XXXXXXXX` que sale del usuario, igual que en el portal. Cada pedido tiene un enlace público `/pedido/<token>`, que es lo que abre el QR: muestra el comercio, los ítems con sus montos y el total, sin datos del cliente. Con `Accept: application/json` devuelve lo mismo en JSON, para la futura app de pago.
 
 Los restaurantes de prueba se crean con `dist/seed-restaurants.js`, que imprime cada contraseña una sola vez. En el VPS quedan en `/opt/pagodirecto/restaurantes-prueba.txt`.
+
+Una compra suma a la tarjeta cuando el comercio marca el pedido como pagado, no al pedirlo. Se aplica una sola promoción, la mejor para el cliente, y los montos los calcula siempre el backend.
 
 ## Chatbot de WhatsApp
 

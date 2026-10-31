@@ -1,24 +1,32 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service.js';
 import { WhatsappApiService } from '../whatsapp/whatsapp-api.service.js';
+import { LoyaltyService } from './loyalty.service.js';
 import { groupByCategory } from './menu.service.js';
 import { formatMoney } from './order-page.js';
 import { OrderRejectedError, OrdersService } from './orders.service.js';
 import type { Customer } from './orders.service.js';
 import { PlaceOrderSchema, SendOptionsSchema } from './restaurant.schemas.js';
-import { renderQr, renderRestaurantsImage } from './whatsapp-images.js';
+import {
+  renderLoyaltyCard,
+  renderQr,
+  renderRestaurantsImage,
+} from './whatsapp-images.js';
 
 export const LIST_RESTAURANTS_TOOL = 'listar_restaurantes';
 export const SEND_RESTAURANTS_IMAGE_TOOL = 'enviar_foto_restaurantes';
 export const SHOW_MENU_TOOL = 'ver_menu';
 export const SEND_OPTIONS_TOOL = 'enviar_opciones';
+export const QUOTE_ORDER_TOOL = 'calcular_pedido';
 export const PLACE_ORDER_TOOL = 'crear_pedido';
+export const SEND_CARD_TOOL = 'ver_tarjeta';
 
 // Estas herramientas le envian algo al cliente por si solas.
 export const MESSAGE_TOOLS = new Set([
   SEND_RESTAURANTS_IMAGE_TOOL,
   SEND_OPTIONS_TOOL,
   PLACE_ORDER_TOOL,
+  SEND_CARD_TOOL,
 ]);
 
 // Su mensaje se le muestra al agente. Cualquier otro error se oculta.
@@ -34,6 +42,7 @@ export class RestaurantAgentTools {
 
   constructor(
     private readonly db: DatabaseService,
+    private readonly loyalty: LoyaltyService,
     private readonly orders: OrdersService,
     private readonly whatsapp: WhatsappApiService,
   ) {}
@@ -54,8 +63,14 @@ export class RestaurantAgentTools {
         return JSON.stringify(await this.showMenu(String(input.restaurante)));
       case SEND_OPTIONS_TOOL:
         return this.sendOptions(customer.phone, input);
+      case QUOTE_ORDER_TOOL:
+        return JSON.stringify(await this.quoteOrder(customer, input));
       case PLACE_ORDER_TOOL:
         return JSON.stringify(await this.placeOrder(customer, input));
+      case SEND_CARD_TOOL:
+        return JSON.stringify(
+          await this.sendCard(customer.phone, String(input.restaurante)),
+        );
       default:
         throw new AgentToolError(`Herramienta desconocida: ${name}`);
     }
@@ -114,6 +129,8 @@ export class RestaurantAgentTools {
       restaurante: restaurant.name,
       moneda: restaurant.currency,
       categorias: groupByCategory(items),
+      promociones: await this.loyalty.activePromotions(restaurant.id),
+      tarjeta: await this.loyalty.publicProgram(restaurant.id),
     };
   }
 
@@ -141,6 +158,49 @@ export class RestaurantAgentTools {
     return 'Opciones enviadas. Espera la respuesta del cliente.';
   }
 
+  private async sendCard(phone: string, publicId: string) {
+    const card = await this.loyalty.cardFor(publicId.trim().toUpperCase(), phone);
+    if (!card) {
+      throw new AgentToolError('Este comercio no tiene tarjeta de fidelidad.');
+    }
+    await this.whatsapp.sendImage(phone, await renderLoyaltyCard(card));
+    return {
+      compras: card.stamps,
+      compras_necesarias: card.stampsRequired,
+      premio: card.rewardName,
+      premios_disponibles: card.rewardsAvailable,
+    };
+  }
+
+  private async quoteOrder(customer: Customer, input: Record<string, unknown>) {
+    const parsed = PlaceOrderSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new AgentToolError('Datos del pedido incompletos.');
+    }
+    try {
+      const quote = await this.orders.quote(customer, parsed.data);
+      return {
+        lineas: quote.lines.map(({ name, quantity, amount }) => ({
+          nombre: name,
+          cantidad: quantity,
+          monto: amount,
+        })),
+        subtotal: quote.subtotal,
+        descuento: quote.discount,
+        promocion: quote.promotion,
+        total: quote.total,
+        moneda: quote.currency,
+        premio_disponible: quote.reward?.name ?? null,
+        premio_incluido: quote.rewardApplied,
+      };
+    } catch (error) {
+      if (error instanceof OrderRejectedError) {
+        throw new AgentToolError(error.message);
+      }
+      throw error;
+    }
+  }
+
   private async placeOrder(customer: Customer, input: Record<string, unknown>) {
     const parsed = PlaceOrderSchema.safeParse(input);
     if (!parsed.success) {
@@ -161,6 +221,8 @@ export class RestaurantAgentTools {
     const result = {
       pedido: order.id,
       restaurante: order.restaurant,
+      subtotal: order.subtotal,
+      descuento: order.discount,
       total: order.total,
       moneda: order.currency,
       enlace: url,

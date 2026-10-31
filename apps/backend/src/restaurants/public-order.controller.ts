@@ -13,6 +13,9 @@ function toJson(order: PublicOrder) {
     status: order.status,
     paymentStatus: order.payment_status,
     currency: order.currency,
+    subtotal: order.subtotal,
+    discount: order.discount,
+    promotion: order.promotion_name,
     total: order.total,
     createdAt: order.created_at,
     items: order.items.map(({ name, quantity, unit_price }) => ({

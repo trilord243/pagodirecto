@@ -16,6 +16,7 @@ import {
   MenuAnalyzerService,
   toScannedMenu,
 } from './menu-analyzer.service.js';
+import { LoyaltyService } from './loyalty.service.js';
 import { MenuController } from './menu.controller.js';
 import { MenuService } from './menu.service.js';
 import { formatMoney } from './order-page.js';
@@ -118,6 +119,7 @@ describe('restaurantes', () => {
       ],
       providers: [
         AuthService,
+        LoyaltyService,
         MenuService,
         OrdersService,
         RestaurantAgentTools,

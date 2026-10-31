@@ -1,6 +1,8 @@
 import {
   LIST_RESTAURANTS_TOOL,
   PLACE_ORDER_TOOL,
+  QUOTE_ORDER_TOOL,
+  SEND_CARD_TOOL,
   SEND_OPTIONS_TOOL,
   SEND_RESTAURANTS_IMAGE_TOOL,
   SHOW_MENU_TOOL,
@@ -18,8 +20,11 @@ Cada comercio es independiente, tiene su propio menu y un ID de la forma PD-XXXX
 - Si el cliente saluda o no dice a cual quiere pedirle, usa ${SEND_RESTAURANTS_IMAGE_TOOL}: le envia una foto con los comercios afiliados. Pidele que escriba el nombre o el ID, en una frase.
 - Si escribe un nombre o un ID, usa ${LIST_RESTAURANTS_TOOL} para identificarlo. Si no lo encuentras o hay varios parecidos, preguntale cual es.
 - Usa ${SHOW_MENU_TOOL} para saber que hay. Ofrece solo lo que devuelva, con su precio exacto: un plato que no aparece no esta disponible. Empieza por las categorias si el menu es largo.
-- Cuando el cliente termine de escoger, ve directo a la confirmacion: usa ${SEND_OPTIONS_TOOL} con el resumen de los platos, las cantidades, el monto de cada uno y el total, y las opciones Confirmar y Cambiar algo. No le preguntes su nombre, ni su direccion, ni si es para retirar o enviar. Si el cliente da alguna indicacion por su cuenta, ponla en notas.
-- Cuando confirme, usa ${PLACE_ORDER_TOOL} una sola vez. La herramienta le envia al cliente el QR para gestionar el pago, con el enlace y el total; luego confirmale en una frase el numero de pedido. Si devuelve qr_enviado en false, dale el enlace que devuelva, copiado tal cual.
+- Cuando el cliente termine de escoger, usa ${QUOTE_ORDER_TOOL}: calcula los montos, los descuentos y si tiene un premio. Nunca calcules tu un total ni un descuento; usa solo lo que devuelva. Si devuelve premio_disponible, preguntale si quiere usarlo y vuelve a calcular con usar_recompensa.
+- Ve directo a la confirmacion: usa ${SEND_OPTIONS_TOOL} con el resumen de los platos, las cantidades, el monto de cada uno, el descuento si hay y el total, y las opciones Confirmar y Cambiar algo. No le preguntes su nombre, ni su direccion, ni si es para retirar o enviar. Si el cliente da alguna indicacion por su cuenta, ponla en notas.
+- Cuando confirme, usa ${PLACE_ORDER_TOOL} una sola vez, con el mismo usar_recompensa que calculaste. La herramienta le envia al cliente el QR para gestionar el pago, con el enlace y el total; luego confirmale en una frase el numero de pedido. Si devuelve qr_enviado en false, dale el enlace que devuelva, copiado tal cual.
+
+Fidelidad: ${SHOW_MENU_TOOL} devuelve las promociones del comercio y su tarjeta, si tiene. Mencionalas en una frase cuando le sirvan al cliente. Si pregunta por su tarjeta o cuantas compras lleva, usa ${SEND_CARD_TOOL}: le envia la imagen de su tarjeta. Cada compra cuenta cuando el comercio confirma el pago, no al hacer el pedido.
 
 Limites de lo que puedes hacer:
 - No inventes precios, platos, disponibilidad, plazos ni descuentos.
@@ -32,6 +37,18 @@ Por ahora no hay asesores atendiendo este numero. Si la persona pide hablar con 
 const RESTAURANT_ID = {
   type: 'string',
   description: 'ID del comercio, de la forma PD-XXXXXXXX.',
+};
+
+const ORDER_ITEMS = {
+  type: 'array',
+  items: {
+    type: 'object',
+    properties: {
+      item_id: { type: 'integer' },
+      cantidad: { type: 'integer' },
+    },
+    required: ['item_id', 'cantidad'],
+  },
 };
 
 export const AGENT_DEFINITION = {
@@ -108,6 +125,35 @@ export const AGENT_DEFINITION = {
     },
     {
       type: 'custom' as const,
+      name: QUOTE_ORDER_TOOL,
+      description:
+        'Calcula un pedido sin crearlo: monto de cada plato, subtotal, descuento aplicable y total, y si el cliente tiene un premio disponible. No le envia nada al cliente.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          restaurante: RESTAURANT_ID,
+          usar_recompensa: {
+            type: 'boolean',
+            description: 'Incluir gratis el premio de la tarjeta.',
+          },
+          items: ORDER_ITEMS,
+        },
+        required: ['restaurante', 'items'],
+      },
+    },
+    {
+      type: 'custom' as const,
+      name: SEND_CARD_TOOL,
+      description:
+        'Le envia al cliente la imagen de su tarjeta de fidelidad en un comercio y devuelve cuantas compras lleva.',
+      input_schema: {
+        type: 'object' as const,
+        properties: { restaurante: RESTAURANT_ID },
+        required: ['restaurante'],
+      },
+    },
+    {
+      type: 'custom' as const,
       name: PLACE_ORDER_TOOL,
       description:
         'Registra un pedido ya confirmado por el cliente, se lo envia al comercio y le manda al cliente el QR de pago. Devuelve el numero de pedido, el total y el enlace.',
@@ -119,17 +165,11 @@ export const AGENT_DEFINITION = {
             type: 'string',
             description: 'Indicaciones que haya dado el cliente, si las hay.',
           },
-          items: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                item_id: { type: 'integer' },
-                cantidad: { type: 'integer' },
-              },
-              required: ['item_id', 'cantidad'],
-            },
+          usar_recompensa: {
+            type: 'boolean',
+            description: 'Incluir gratis el premio de la tarjeta.',
           },
+          items: ORDER_ITEMS,
         },
         required: ['restaurante', 'items'],
       },

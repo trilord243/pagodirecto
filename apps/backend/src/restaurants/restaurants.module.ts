@@ -8,6 +8,10 @@ import {
   MENU_ANALYZER_CLIENT,
   MenuAnalyzerService,
 } from './menu-analyzer.service.js';
+import { InsightsController } from './insights.controller.js';
+import { InsightsService } from './insights.service.js';
+import { LoyaltyController } from './loyalty.controller.js';
+import { LoyaltyService } from './loyalty.service.js';
 import { MenuController } from './menu.controller.js';
 import { MenuService } from './menu.service.js';
 import { OrdersController } from './orders.controller.js';
@@ -19,6 +23,8 @@ import { RestaurantAuthGuard } from './restaurant-auth.guard.js';
   imports: [WhatsappApiModule],
   controllers: [
     AuthController,
+    InsightsController,
+    LoyaltyController,
     MenuController,
     OrdersController,
     PublicOrderController,
@@ -26,6 +32,8 @@ import { RestaurantAuthGuard } from './restaurant-auth.guard.js';
   providers: [
     { provide: MENU_ANALYZER_CLIENT, useFactory: () => new Anthropic() },
     AuthService,
+    InsightsService,
+    LoyaltyService,
     MenuAnalyzerService,
     MenuService,
     OrdersService,
