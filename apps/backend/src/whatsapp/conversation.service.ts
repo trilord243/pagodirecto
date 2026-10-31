@@ -21,7 +21,7 @@ export const TEXT_ONLY_MESSAGE =
 export const FALLBACK_MESSAGE =
   'Tuve un problema para responderte. Intenta de nuevo en unos minutos, por favor.';
 export const HANDOFF_MESSAGE =
-  'Te voy a pasar con un asesor para seguir atendiéndote. Te escribirá por aquí.';
+  'Por ahora no puedo seguir atendiéndote por aquí. Escríbeme de nuevo más tarde, por favor.';
 
 @Injectable()
 export class ConversationService {
