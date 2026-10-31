@@ -8,11 +8,11 @@ import {
 import { ConversationService } from './conversation.service.js';
 import { ConversationStore } from './conversation.store.js';
 import { OdooConversationService } from './odoo-conversation.service.js';
-import { WhatsappApiService } from './whatsapp-api.service.js';
+import { WhatsappApiModule } from './whatsapp-api.module.js';
 import { WhatsappController } from './whatsapp.controller.js';
 
 @Module({
-  imports: [RestaurantsModule],
+  imports: [RestaurantsModule, WhatsappApiModule],
   controllers: [WhatsappController],
   providers: [
     { provide: ANTHROPIC_CLIENT, useFactory: () => new Anthropic() },
@@ -20,7 +20,6 @@ import { WhatsappController } from './whatsapp.controller.js';
     ConversationService,
     ConversationStore,
     OdooConversationService,
-    WhatsappApiService,
   ],
 })
 export class WhatsappModule {}

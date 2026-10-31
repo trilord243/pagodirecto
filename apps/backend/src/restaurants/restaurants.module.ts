@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { Module } from '@nestjs/common';
+import { WhatsappApiModule } from '../whatsapp/whatsapp-api.module.js';
 import { RestaurantAgentTools } from './agent-tools.service.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
@@ -11,10 +12,17 @@ import { MenuController } from './menu.controller.js';
 import { MenuService } from './menu.service.js';
 import { OrdersController } from './orders.controller.js';
 import { OrdersService } from './orders.service.js';
+import { PublicOrderController } from './public-order.controller.js';
 import { RestaurantAuthGuard } from './restaurant-auth.guard.js';
 
 @Module({
-  controllers: [AuthController, MenuController, OrdersController],
+  imports: [WhatsappApiModule],
+  controllers: [
+    AuthController,
+    MenuController,
+    OrdersController,
+    PublicOrderController,
+  ],
   providers: [
     { provide: MENU_ANALYZER_CLIENT, useFactory: () => new Anthropic() },
     AuthService,

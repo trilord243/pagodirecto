@@ -14,7 +14,11 @@ import {
   CurrentRestaurant,
   RestaurantAuthGuard,
 } from './restaurant-auth.guard.js';
-import { LoginSchema, parseBody } from './restaurant.schemas.js';
+import {
+  LoginSchema,
+  parseBody,
+  RegisterSchema,
+} from './restaurant.schemas.js';
 
 @Controller('restaurants')
 export class AuthController {
@@ -25,6 +29,12 @@ export class AuthController {
   login(@Body() body: unknown) {
     const { username, password } = parseBody(LoginSchema, body);
     return this.auth.login(username, password);
+  }
+
+  @Post('auth/register')
+  register(@Body() body: unknown) {
+    const { username, password } = parseBody(RegisterSchema, body);
+    return this.auth.register(username, password);
   }
 
   @Post('auth/logout')

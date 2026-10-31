@@ -8,13 +8,24 @@ export class OrderRejectedError extends Error {}
 export interface OrderSummary {
   id: number;
   restaurant: string;
+  token: string;
   total: number;
   currency: string;
 }
 
-const ORDER_COLUMNS = `
-  o.id, o.customer_name, o.customer_phone, o.notes, o.status,
-  o.total::float8 as total, o.currency, o.created_at,
+export interface PublicOrder {
+  id: number;
+  restaurant: string;
+  restaurant_id: string;
+  status: string;
+  payment_status: string;
+  total: number;
+  currency: string;
+  created_at: Date;
+  items: { name: string; quantity: number; unit_price: number }[];
+}
+
+const ORDER_ITEMS = `
   coalesce(
     (select json_agg(json_build_object(
         'name', i.name,
@@ -23,6 +34,11 @@ const ORDER_COLUMNS = `
        from order_items i
       where i.order_id = o.id),
     '[]'::json) as items`;
+
+const ORDER_COLUMNS = `
+  o.id, o.customer_name, o.customer_phone, o.notes, o.status, o.payment_status,
+  o.public_token, o.total::float8 as total, o.currency, o.created_at,
+  ${ORDER_ITEMS}`;
 
 @Injectable()
 export class OrdersService {
@@ -37,7 +53,7 @@ export class OrdersService {
         name: string;
         currency: string;
       }>(
-        'select id, name, currency from restaurants where slug = $1 and active',
+        'select id, name, currency from restaurants where public_id = $1 and active',
         [input.restaurante],
       );
       const restaurant = restaurants[0];
@@ -72,11 +88,14 @@ export class OrdersService {
       );
       const total = totalCents / 100;
 
-      const { rows: orders } = await tx.query<{ id: number }>(
+      const { rows: orders } = await tx.query<{
+        id: number;
+        public_token: string;
+      }>(
         `insert into orders
            (restaurant_id, customer_phone, customer_name, notes, total, currency)
          values ($1, $2, $3, $4, $5, $6)
-         returning id`,
+         returning id, public_token`,
         [
           restaurant.id,
           phone,
@@ -86,18 +105,19 @@ export class OrdersService {
           restaurant.currency,
         ],
       );
-      const orderId = orders[0].id;
+      const order = orders[0];
       for (const line of lines) {
         await tx.query(
           `insert into order_items (order_id, menu_item_id, name, unit_price, quantity)
            values ($1, $2, $3, $4, $5)`,
-          [orderId, line.id, line.name, line.price, line.quantity],
+          [order.id, line.id, line.name, line.price, line.quantity],
         );
       }
 
       return {
-        id: orderId,
+        id: order.id,
         restaurant: restaurant.name,
+        token: order.public_token,
         total,
         currency: restaurant.currency,
       };
@@ -115,17 +135,38 @@ export class OrdersService {
     return rows;
   }
 
-  async updateStatus(restaurantId: number, orderId: number, status: string) {
+  async update(
+    restaurantId: number,
+    orderId: number,
+    patch: { status?: string; paymentStatus?: string },
+  ) {
     const { rows } = await this.db.query(
       `update orders o
-          set status = $3, updated_at = now()
+          set status = coalesce($3, o.status),
+              payment_status = coalesce($4, o.payment_status),
+              updated_at = now()
         where o.restaurant_id = $1 and o.id = $2
         returning ${ORDER_COLUMNS}`,
-      [restaurantId, orderId, status],
+      [restaurantId, orderId, patch.status ?? null, patch.paymentStatus ?? null],
     );
     if (!rows[0]) {
       throw new NotFoundException('Pedido no encontrado');
     }
     return rows[0];
+  }
+
+  // Lo que ve quien abre el QR. El telefono, el nombre y la direccion del
+  // cliente se quedan fuera: el enlace puede terminar en manos de cualquiera.
+  async findPublic(token: string): Promise<PublicOrder | null> {
+    const { rows } = await this.db.query<PublicOrder>(
+      `select o.id, r.name as restaurant, r.public_id as restaurant_id,
+              o.status, o.payment_status, o.total::float8 as total, o.currency,
+              o.created_at, ${ORDER_ITEMS}
+         from orders o
+         join restaurants r on r.id = o.restaurant_id
+        where o.public_token = $1`,
+      [token],
+    );
+    return rows[0] ?? null;
   }
 }

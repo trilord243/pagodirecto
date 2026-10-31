@@ -1,7 +1,7 @@
 export const SCHEMA = `
 create table if not exists restaurants (
   id integer generated always as identity primary key,
-  slug text not null unique,
+  public_id text not null unique,
   name text not null,
   username text not null unique,
   password_hash text not null,
@@ -56,4 +56,18 @@ create table if not exists order_items (
   unit_price numeric(12, 2) not null,
   quantity integer not null check (quantity > 0)
 );
+
+alter table restaurants add column if not exists public_id text;
+update restaurants
+   set public_id = 'PD-' || upper(substr(encode(sha256(convert_to(username, 'UTF8')), 'hex'), 1, 8))
+ where public_id is null;
+alter table restaurants alter column public_id set not null;
+create unique index if not exists restaurants_public_id on restaurants (public_id);
+alter table restaurants drop column if exists slug;
+
+alter table orders add column if not exists public_token text not null
+  default replace(gen_random_uuid()::text, '-', '');
+create unique index if not exists orders_public_token on orders (public_token);
+alter table orders add column if not exists payment_status text not null
+  default 'pending' check (payment_status in ('pending', 'paid'));
 `;

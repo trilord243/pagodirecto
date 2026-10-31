@@ -9,37 +9,69 @@ export const ORDER_STATUSES = [
   'cancelled',
 ] as const;
 
+export const PAYMENT_STATUSES = ['pending', 'paid'] as const;
+
 export const LoginSchema = z.object({
-  username: z.string().trim().min(1).max(80),
+  username: z.string().trim().toLowerCase().min(1).max(80),
   password: z.string().min(1).max(200),
+});
+
+// Las mismas reglas que valida el portal.
+export const RegisterSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9._-]{3,30}$/, 'Usuario inválido'),
+  password: z.string().min(6).max(200),
 });
 
 const MenuItemSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(500).nullish(),
   category: z.string().trim().max(80).nullish(),
-  price: z.number().min(0).max(10_000_000),
+  price: z.number().positive().max(10_000_000),
 });
 
 export type MenuItemInput = z.infer<typeof MenuItemSchema>;
 
 export const CreateMenuItemSchema = MenuItemSchema;
 
-export const ConfirmMenuSchema = z.object({
-  currency: z.string().trim().toUpperCase().min(1).max(8).optional(),
-  items: z.array(MenuItemSchema).min(1).max(500),
-});
-
 export const UpdateMenuItemSchema = MenuItemSchema.partial()
   .extend({ available: z.boolean().optional() })
   .refine((patch) => Object.keys(patch).length > 0, 'Sin cambios');
 
-export const UpdateOrderSchema = z.object({
-  status: z.enum(ORDER_STATUSES),
+export const PublishMenuSchema = z.object({
+  currency: z.enum(['USD', 'VES']),
+  categories: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(80),
+        items: z
+          .array(
+            MenuItemSchema.omit({ category: true }).extend({
+              available: z.boolean().default(true),
+            }),
+          )
+          .min(1)
+          .max(200),
+      }),
+    )
+    .min(1)
+    .max(50),
 });
 
+export type PublishedMenu = z.infer<typeof PublishMenuSchema>;
+
+export const UpdateOrderSchema = z
+  .object({
+    status: z.enum(ORDER_STATUSES).optional(),
+    paymentStatus: z.enum(PAYMENT_STATUSES).optional(),
+  })
+  .refine((patch) => Object.keys(patch).length > 0, 'Sin cambios');
+
 export const PlaceOrderSchema = z.object({
-  restaurante: z.string().trim().min(1).max(80),
+  restaurante: z.string().trim().toUpperCase().min(1).max(20),
   nombre_cliente: z.string().trim().min(1).max(120),
   notas: z.string().trim().max(500).nullish(),
   items: z
@@ -54,6 +86,21 @@ export const PlaceOrderSchema = z.object({
 });
 
 export type PlaceOrderInput = z.infer<typeof PlaceOrderSchema>;
+
+export const SendOptionsSchema = z.object({
+  texto: z.string().trim().min(1).max(1024),
+  boton: z.string().trim().min(1).max(20).optional(),
+  opciones: z
+    .array(
+      z.object({
+        id: z.string().trim().min(1).max(200),
+        titulo: z.string().trim().min(1).max(120),
+        descripcion: z.string().trim().max(200).nullish(),
+      }),
+    )
+    .min(2)
+    .max(10),
+});
 
 export function parseBody<Schema extends z.ZodType>(
   schema: Schema,

@@ -42,16 +42,20 @@ API en `https://api.example.com/restaurants`. Salvo el login, todo requiere `Aut
 | Método y ruta | Qué hace |
 | --- | --- |
 | `POST /auth/login` | Recibe `username` y `password`, devuelve `token` (dura 7 días) |
+| `POST /auth/register` | Afilia un comercio con `username` y `password`, sin verificación. Crea su ID y devuelve lo mismo que el login |
 | `POST /auth/logout` | Invalida el token |
 | `GET /me` | Datos del restaurante |
-| `POST /menu/analyze` | Recibe la imagen en el campo `image` (multipart, JPG, PNG o WebP, hasta 5 MB) y devuelve lo leído **sin guardar nada** |
-| `POST /menu/confirm` | Recibe `{ currency?, items: [{ name, description?, category?, price }] }`. Guarda por nombre: actualiza los platos que ya existen y agrega los nuevos |
+| `GET /menu` | Menú completo por categorías |
+| `PUT /menu` | Publica el menú completo `{ currency, categories: [{ name, items: [{ name, description?, price, available? }] }] }`: lo que no venga se borra. `currency` es `USD` o `VES` |
+| `POST /menu/analyze` | Recibe hasta 5 archivos en el campo `files` (multipart, PDF, JPG, PNG o WebP, hasta 10 MB cada uno) y devuelve lo leído **sin guardar nada**, con `reviewReason` en lo dudoso |
 | `GET /menu/items` | Lista el menú |
 | `POST /menu/items` | Agrega un plato |
 | `PATCH /menu/items/:id` | Edita un plato o su disponibilidad con `available` |
 | `DELETE /menu/items/:id` | Borra un plato |
 | `GET /orders` | Últimos 200 pedidos, con el teléfono del cliente |
-| `PATCH /orders/:id` | Cambia `status`: `pending`, `confirmed`, `ready`, `delivered` o `cancelled` |
+| `PATCH /orders/:id` | Cambia `status` (`pending`, `confirmed`, `ready`, `delivered`, `cancelled`) o `paymentStatus` (`pending`, `paid`) |
+
+Cada comercio tiene un ID `PD-XXXXXXXX` que sale del usuario, igual que en el portal. Cada pedido tiene un enlace público `/pedido/<token>`, que es lo que abre el QR: muestra el comercio, los ítems con sus montos y el total, sin datos del cliente. Con `Accept: application/json` devuelve lo mismo en JSON, para la futura app de pago.
 
 Los restaurantes de prueba se crean con `dist/seed-restaurants.js`, que imprime cada contraseña una sola vez. En el VPS quedan en `/opt/pagodirecto/restaurantes-prueba.txt`.
 

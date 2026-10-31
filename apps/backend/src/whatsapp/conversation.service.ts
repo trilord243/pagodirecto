@@ -1,6 +1,10 @@
 import { createHash } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
-import { RestaurantAgentTools } from '../restaurants/agent-tools.service.js';
+import {
+  MESSAGE_TOOLS,
+  RestaurantAgentTools,
+  SEND_OPTIONS_TOOL,
+} from '../restaurants/agent-tools.service.js';
 import { ClaudeAgentService, TurnResult } from './claude-agent.service.js';
 import { ConversationStore } from './conversation.store.js';
 import { OdooConversationService } from './odoo-conversation.service.js';
@@ -91,6 +95,8 @@ export class ConversationService {
     }
 
     let result: TurnResult;
+    let delivered = false;
+    let awaitingChoice = false;
     try {
       const sessionId =
         conversation.sessionId ??
@@ -99,7 +105,12 @@ export class ConversationService {
       result = await this.agent.runTurn(
         sessionId,
         message.text.slice(0, MAX_INPUT_LENGTH),
-        (name, input) => this.tools.execute(message.from, name, input),
+        async (name, input) => {
+          const output = await this.tools.execute(message.from, name, input);
+          delivered ||= MESSAGE_TOOLS.has(name);
+          awaitingChoice = name === SEND_OPTIONS_TOOL;
+          return output;
+        },
       );
     } catch (error) {
       // Una sesion a medio turno no acepta mensajes nuevos: se descarta.
@@ -122,6 +133,11 @@ export class ConversationService {
     }
     if (result.escalation !== undefined) {
       this.startHandoff(key, result.escalation);
+    }
+    // Las opciones ya llevan su mensaje: un texto despues llegaria debajo de los
+    // botones repitiendolo. Y sin texto es normal si ya se le envio algo.
+    if (awaitingChoice || (!result.reply && delivered)) {
+      return;
     }
     await this.whatsapp.sendText(
       message.from,

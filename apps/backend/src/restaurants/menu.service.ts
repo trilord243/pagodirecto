@@ -4,8 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service.js';
-import type { Queryable } from '../database/database.service.js';
-import type { MenuItemInput } from './restaurant.schemas.js';
+import type { MenuItemInput, PublishedMenu } from './restaurant.schemas.js';
 
 export interface MenuItem {
   id: number;
@@ -16,6 +15,13 @@ export interface MenuItem {
   available: boolean;
 }
 
+export interface MenuCategory {
+  name: string;
+  items: Omit<MenuItem, 'category'>[];
+}
+
+export const DEFAULT_CATEGORY = 'Menú';
+
 const ITEM_COLUMNS =
   'id, name, description, category, price::float8 as price, available';
 const UNIQUE_VIOLATION = '23505';
@@ -24,24 +30,15 @@ function isUniqueViolation(error: unknown): boolean {
   return (error as { code?: string }).code === UNIQUE_VIOLATION;
 }
 
-function upsertItem(db: Queryable, restaurantId: number, item: MenuItemInput) {
-  return db.query(
-    `insert into menu_items (restaurant_id, name, description, category, price)
-     values ($1, $2, $3, $4, $5)
-     on conflict (restaurant_id, lower(name)) do update
-       set description = excluded.description,
-           category = excluded.category,
-           price = excluded.price,
-           available = true,
-           updated_at = now()`,
-    [
-      restaurantId,
-      item.name,
-      item.description ?? null,
-      item.category ?? null,
-      item.price,
-    ],
-  );
+export function groupByCategory<Item extends { category: string | null }>(
+  items: Item[],
+) {
+  const categories = new Map<string, Omit<Item, 'category'>[]>();
+  for (const { category, ...item } of items) {
+    const name = category || DEFAULT_CATEGORY;
+    categories.set(name, [...(categories.get(name) ?? []), item]);
+  }
+  return [...categories].map(([name, grouped]) => ({ name, items: grouped }));
 }
 
 @Injectable()
@@ -58,25 +55,59 @@ export class MenuService {
     return rows;
   }
 
-  // Lo confirmado se suma al menu: un plato con el mismo nombre se actualiza y
-  // lo que no venga en la foto se queda como esta.
-  async confirm(
-    restaurantId: number,
-    items: MenuItemInput[],
-    currency?: string,
-  ): Promise<MenuItem[]> {
+  async get(restaurantId: number) {
+    const { rows } = await this.db.query<{ currency: string }>(
+      'select currency from restaurants where id = $1',
+      [restaurantId],
+    );
+    return {
+      currency: rows[0].currency,
+      categories: groupByCategory(await this.list(restaurantId)),
+    };
+  }
+
+  // El portal publica el menu completo: lo que se quito en el editor desaparece.
+  // Los pedidos ya hechos guardan su propia copia de nombre y precio.
+  async publish(restaurantId: number, menu: PublishedMenu) {
     await this.db.transaction(async (tx) => {
-      if (currency) {
-        await tx.query('update restaurants set currency = $2 where id = $1', [
-          restaurantId,
-          currency,
-        ]);
+      await tx.query('update restaurants set currency = $2 where id = $1', [
+        restaurantId,
+        menu.currency,
+      ]);
+      const names: string[] = [];
+      for (const category of menu.categories) {
+        for (const item of category.items) {
+          names.push(item.name);
+          await tx.query(
+            `insert into menu_items
+               (restaurant_id, name, description, category, price, available)
+             values ($1, $2, $3, $4, $5, $6)
+             on conflict (restaurant_id, lower(name)) do update
+               set name = excluded.name,
+                   description = excluded.description,
+                   category = excluded.category,
+                   price = excluded.price,
+                   available = excluded.available,
+                   updated_at = now()`,
+            [
+              restaurantId,
+              item.name,
+              item.description ?? null,
+              category.name,
+              item.price,
+              item.available,
+            ],
+          );
+        }
       }
-      for (const item of items) {
-        await upsertItem(tx, restaurantId, item);
-      }
+      await tx.query(
+        `delete from menu_items
+          where restaurant_id = $1
+            and lower(name) <> all (select lower(unnest($2::text[])))`,
+        [restaurantId, names],
+      );
     });
-    return this.list(restaurantId);
+    return this.get(restaurantId);
   }
 
   async create(restaurantId: number, item: MenuItemInput): Promise<MenuItem> {

@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import {
   ClaudeAgentService,
+  ToolExecutor,
   TurnResult,
 } from './claude-agent.service.js';
 import {
@@ -21,7 +22,7 @@ import {
 } from './odoo-conversation.service.js';
 import { WhatsappApiService } from './whatsapp-api.service.js';
 import { WhatsappController } from './whatsapp.controller.js';
-import { isValidSignature } from './whatsapp.webhook.js';
+import { extractInboundMessages, isValidSignature } from './whatsapp.webhook.js';
 
 const CUSTOMER = '584120000000';
 const SECRET = 'secreto-de-prueba';
@@ -44,8 +45,16 @@ describe('whatsapp', () => {
   let store: ReturnType<typeof memoryStore>;
   const sendText = vi.fn();
   const createSession = vi.fn();
-  const runTurn = vi.fn<() => Promise<TurnResult>>();
+  const runTurn =
+    vi.fn<
+      (
+        session: string,
+        text: string,
+        executeTool: ToolExecutor,
+      ) => Promise<TurnResult>
+    >();
   const canAgentReply = vi.fn<() => Promise<boolean>>();
+  const execute = vi.fn();
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -65,7 +74,7 @@ describe('whatsapp', () => {
         ConversationService,
         { provide: ConversationStore, useValue: store },
         { provide: OdooConversationService, useValue: { canAgentReply } },
-        { provide: RestaurantAgentTools, useValue: { execute: vi.fn() } },
+        { provide: RestaurantAgentTools, useValue: { execute } },
         { provide: WhatsappApiService, useValue: { sendText } },
         {
           provide: ClaudeAgentService,
@@ -167,6 +176,41 @@ describe('whatsapp', () => {
       expect(runTurn).not.toHaveBeenCalled();
     });
 
+    it('convierte una opcion tocada en texto con su id', () => {
+      const [message] = extractInboundMessages(
+        {
+          entry: [
+            {
+              changes: [
+                {
+                  field: 'messages',
+                  value: {
+                    metadata: { phone_number_id: '111' },
+                    messages: [
+                      {
+                        id: 'wamid.1',
+                        from: CUSTOMER,
+                        type: 'interactive',
+                        interactive: {
+                          list_reply: { id: 'PD-1234ABCD', title: 'Arepera' },
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        '111',
+      );
+
+      expect(message).toMatchObject({
+        type: 'text',
+        text: 'Arepera (opcion PD-1234ABCD)',
+      });
+    });
+
     it('falla cerrado si no hay app secret configurado', () => {
       expect(isValidSignature(Buffer.from('{}'), 'sha256=x', '')).toBe(false);
     });
@@ -240,6 +284,51 @@ describe('whatsapp', () => {
 
       expect(runTurn).not.toHaveBeenCalled();
       expect(sendText).not.toHaveBeenCalled();
+    });
+
+    it('no manda el mensaje de error si una herramienta ya envio algo', async () => {
+      execute.mockResolvedValue('Opciones enviadas.');
+      runTurn.mockImplementationOnce(async (_session, _text, executeTool) => {
+        await executeTool('enviar_opciones', {});
+        return { reply: '', stopReason: 'end_turn' };
+      });
+
+      await conversations.enqueue(textMessage('wamid.1'));
+
+      expect(sendText).not.toHaveBeenCalled();
+    });
+
+    it('no repite con texto lo que ya dicen las opciones', async () => {
+      execute.mockResolvedValue('Opciones enviadas.');
+      runTurn.mockImplementationOnce(async (_session, _text, executeTool) => {
+        await executeTool('enviar_opciones', {});
+        return { reply: 'Te envie las opciones', stopReason: 'end_turn' };
+      });
+
+      await conversations.enqueue(textMessage('wamid.1'));
+
+      expect(sendText).not.toHaveBeenCalled();
+    });
+
+    it('mantiene el texto despues de enviar la foto o el QR', async () => {
+      execute.mockResolvedValue('{}');
+      runTurn.mockImplementationOnce(async (_session, _text, executeTool) => {
+        await executeTool('enviar_opciones', {});
+        await executeTool('crear_pedido', {});
+        return { reply: 'Tu pedido es el 7', stopReason: 'end_turn' };
+      });
+
+      await conversations.enqueue(textMessage('wamid.1'));
+
+      expect(sendText).toHaveBeenCalledWith(CUSTOMER, 'Tu pedido es el 7');
+    });
+
+    it('avisa si el agente no dijo nada ni envio nada', async () => {
+      runTurn.mockResolvedValueOnce({ reply: '', stopReason: 'end_turn' });
+
+      await conversations.enqueue(textMessage('wamid.1'));
+
+      expect(sendText).toHaveBeenCalledWith(CUSTOMER, FALLBACK_MESSAGE);
     });
 
     it('ignora las reacciones', async () => {

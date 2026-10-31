@@ -31,7 +31,10 @@ export class OrdersController {
     @Param('id', ParseIntPipe) id: number,
     @Body() body: unknown,
   ) {
-    const { status } = parseBody(UpdateOrderSchema, body);
-    return this.orders.updateStatus(restaurant.id, id, status);
+    return this.orders.update(
+      restaurant.id,
+      id,
+      parseBody(UpdateOrderSchema, body),
+    );
   }
 }
