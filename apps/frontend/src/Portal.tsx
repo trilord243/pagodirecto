@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Footer } from './components/Footer.tsx'
 import { Header } from './components/Header.tsx'
+import { CatalogView } from './components/CatalogView.tsx'
 import { BagIcon, ChatIcon, MenuIcon, ScanIcon } from './components/Icons.tsx'
 import { LoadState } from './components/LoadState.tsx'
 import { MenuEditor } from './components/MenuEditor.tsx'
@@ -16,6 +17,7 @@ import { errorMessage } from './lib/api.ts'
 import type { Session } from './lib/auth.ts'
 import {
   countItems,
+  createCategory,
   fetchMenu,
   publishMenu,
   type EditableMenu,
@@ -66,6 +68,14 @@ const HERO_COPY = {
     title: 'Tu menú ya atiende pedidos',
     text: 'Puedes volver a editarlo cuando cambien tus platos o precios.',
   },
+  manual: {
+    title: 'Crea tu menú',
+    text: 'Agrega tus productos uno por uno. Tus clientes verán exactamente esto en WhatsApp.',
+  },
+  catalog: {
+    title: 'Tu catálogo',
+    text: 'Todos tus platos, uno por uno, con su precio y si están disponibles.',
+  },
   review: {
     title: 'Revisa y ajusta tu menú',
     text: 'Corrige nombres, precios y disponibilidad. Tus clientes verán exactamente esto en WhatsApp.',
@@ -78,6 +88,7 @@ const HERO_COPY = {
 
 const SECTIONS = [
   { id: 'menu', label: 'Menú' },
+  { id: 'catalog', label: 'Catálogo' },
   { id: 'orders', label: 'Pedidos' },
 ] as const
 
@@ -106,7 +117,7 @@ export function Portal({ session, onLogout }: PortalProps) {
   const [files, setFiles] = useState<File[]>([])
   const [menu, setMenu] = useState<EditableMenu | null>(null)
   const [stage, setStage] = useState<ProcessingStage>('scanning')
-  const [progress, setProgress] = useState<number | null>(null)
+  const [uploadPercent, setUploadPercent] = useState(0)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const activeUpload = useRef<AbortController | null>(null)
 
@@ -134,22 +145,21 @@ export function Portal({ session, onLogout }: PortalProps) {
     setFiles(next)
     setMenu(null)
     setUploadError(null)
-    setProgress(0)
+    setUploadPercent(0)
+    setStage('uploading')
+    setView('status')
+    scrollToTop()
 
     try {
       const scanned = await analyzeMenu(
         session.token,
         next,
         (percent) => {
-          setProgress(percent)
-          if (percent < 100) return
-          setStage('scanning')
-          setView('status')
-          scrollToTop()
+          setUploadPercent(percent)
+          if (percent === 100) setStage('scanning')
         },
         controller.signal,
       )
-      setProgress(null)
       if (scanned.categories.length === 0) {
         setUploadError(EMPTY_SCAN)
         setView('upload')
@@ -162,7 +172,6 @@ export function Portal({ session, onLogout }: PortalProps) {
       scrollToTop()
     } catch (error) {
       if (controller.signal.aborted) return
-      setProgress(null)
       setUploadError(errorMessage(error))
       setView('upload')
     }
@@ -172,9 +181,18 @@ export function Portal({ session, onLogout }: PortalProps) {
     activeUpload.current?.abort()
     setFiles([])
     setMenu(null)
-    setProgress(null)
     setUploadError(null)
     setView('upload')
+    scrollToTop()
+  }
+
+  // Sin archivos: el editor arranca vacío y el comercio escribe cada producto.
+  function openManual() {
+    setFiles([])
+    setMenu({ currency: 'USD', categories: [createCategory()] })
+    setStage('ready')
+    setUploadError(null)
+    setView('review')
     scrollToTop()
   }
 
@@ -184,7 +202,7 @@ export function Portal({ session, onLogout }: PortalProps) {
     if (view === 'review') {
       setMenu(saved)
       setStage('published')
-      setView('status')
+      setView(files.length > 0 ? 'status' : 'home')
       scrollToTop()
     }
     return saved
@@ -195,7 +213,7 @@ export function Portal({ session, onLogout }: PortalProps) {
     scrollToTop()
   }
 
-  function renderMenuSection() {
+  function renderLoadState() {
     if (view === 'loading') {
       return (
         <section className="card">
@@ -216,16 +234,22 @@ export function Portal({ session, onLogout }: PortalProps) {
         </section>
       )
     }
+    return null
+  }
+
+  function renderMenuSection() {
+    const loadState = renderLoadState()
+    if (loadState) return loadState
     if (view === 'upload') {
       return (
         <MenuUploadForm
           initialFiles={files}
-          progress={progress}
           serverError={uploadError}
           onCancel={() => {
             setUploadError(null)
             setView('home')
           }}
+          onManual={openManual}
           onSubmit={handleUpload}
         />
       )
@@ -236,6 +260,7 @@ export function Portal({ session, onLogout }: PortalProps) {
           fileCount={files.length}
           restaurantId={session.restaurantId}
           stage={stage}
+          uploadPercent={uploadPercent}
           productCount={menu ? countItems(menu).total : 0}
           onReview={() => {
             setView('review')
@@ -249,14 +274,14 @@ export function Portal({ session, onLogout }: PortalProps) {
       return (
         <MenuEditor
           key="review"
-          accountName={session.username}
+          accountName={session.name}
           initialMenu={menu}
           published={stage === 'published'}
-          hasOriginal
+          hasOriginal={files.length > 0}
           replacesPublished={published !== null}
           cancelLabel="Volver"
           onCancel={() => {
-            setView('status')
+            setView(files.length > 0 ? 'status' : 'home')
             scrollToTop()
           }}
           onPublish={handlePublish}
@@ -267,7 +292,7 @@ export function Portal({ session, onLogout }: PortalProps) {
       return (
         <MenuEditor
           key="published"
-          accountName={session.username}
+          accountName={session.name}
           initialMenu={published}
           published
           hasOriginal={false}
@@ -278,22 +303,19 @@ export function Portal({ session, onLogout }: PortalProps) {
         />
       )
     }
-    return <Welcome session={session} onUpload={openUpload} />
+    return (
+      <Welcome session={session} onUpload={openUpload} onManual={openManual} />
+    )
   }
 
-  const heroKey =
-    section === 'orders'
-      ? 'orders'
-      : view === 'upload' || view === 'review'
-        ? view
-        : view === 'status'
-          ? stage === 'published'
-            ? 'published'
-            : 'status'
-          : view === 'home' && published
-            ? 'published'
-            : 'welcome'
-  const hero = HERO_COPY[heroKey]
+  function menuHeroKey(): keyof typeof HERO_COPY {
+    if (view === 'upload') return 'upload'
+    if (view === 'review') return files.length > 0 ? 'review' : 'manual'
+    if (view === 'status') return stage === 'published' ? 'published' : 'status'
+    return view === 'home' && published ? 'published' : 'welcome'
+  }
+
+  const hero = HERO_COPY[section === 'menu' ? menuHeroKey() : section]
 
   return (
     <>
@@ -328,11 +350,15 @@ export function Portal({ session, onLogout }: PortalProps) {
         <div className="layout__main">
           {/* Oculto y no desmontado: así no se pierden las ediciones al ver pedidos. */}
           <div hidden={section !== 'menu'}>{renderMenuSection()}</div>
+          {section === 'catalog' &&
+            (renderLoadState() ?? (
+              <CatalogView menu={published} onEdit={() => setSection('menu')} />
+            ))}
           {section === 'orders' && <OrdersView token={session.token} />}
         </div>
 
         <aside className="layout__aside">
-          {section === 'menu' && view === 'review' ? (
+          {section === 'menu' && view === 'review' && files.length > 0 ? (
             <OriginalMenuPreview files={files} />
           ) : (
             <>

@@ -11,25 +11,25 @@ export function Header({ session, onLogout }: HeaderProps) {
   return (
     <header className="site-header">
       <div className="site-header__bar">
+        {session && (
+          <span className="site-header__user">
+            <span className="site-header__name">{session.name}</span>
+            <span className="site-header__id">{session.restaurantId}</span>
+          </span>
+        )}
         <a href="/" className="site-header__brand" aria-label="PagoDirecto">
           <img src={logo} alt="PagoDirecto" width="150" height="25" />
         </a>
         {session ? (
-          <div className="site-header__session">
-            <span className="site-header__user">
-              <span className="site-header__username">{session.username}</span>
-              <span className="site-header__id">ID {session.restaurantId}</span>
-            </span>
-            <button
-              type="button"
-              className="site-header__logout"
-              onClick={onLogout}
-              aria-label="Cerrar sesión"
-              title="Cerrar sesión"
-            >
-              <LogoutIcon width={20} height={20} />
-            </button>
-          </div>
+          <button
+            type="button"
+            className="site-header__logout"
+            onClick={onLogout}
+            aria-label="Cerrar sesión"
+            title="Cerrar sesión"
+          >
+            <LogoutIcon width={20} height={20} />
+          </button>
         ) : (
           <span className="site-header__tag">Comercios</span>
         )}

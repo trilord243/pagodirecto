@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { ApiError, errorMessage } from '../lib/api.ts'
 import {
+  MAX_NAME_LENGTH,
   login,
   register,
   validateLogin,
@@ -10,7 +11,7 @@ import {
 } from '../lib/auth.ts'
 import { Footer } from './Footer.tsx'
 import { Header } from './Header.tsx'
-import { EyeIcon, EyeOffIcon, LockIcon, UserIcon } from './Icons.tsx'
+import { BagIcon, EyeIcon, EyeOffIcon, LockIcon, UserIcon } from './Icons.tsx'
 
 type Mode = 'login' | 'register'
 
@@ -30,7 +31,7 @@ const COPY = {
     title: 'Afilia tu comercio',
     lead: 'Crea tu usuario, sube tu menú y empieza a recibir pedidos a través del WhatsApp de PagoDirecto.',
     heading: 'Crea tu cuenta',
-    hint: 'Solo necesitas un usuario y una contraseña.',
+    hint: 'Solo necesitas el nombre de tu negocio, un usuario y una contraseña.',
     submit: 'Crear cuenta',
     submitting: 'Creando tu cuenta…',
     note: 'Al registrarte, tu comercio recibe un ID único con el que el agente de WhatsApp lo encontrará.',
@@ -46,6 +47,7 @@ interface LoginPageProps {
 
 export function LoginPage({ notice, onLogin }: LoginPageProps) {
   const [mode, setMode] = useState<Mode>('login')
+  const [name, setName] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -63,17 +65,20 @@ export function LoginPage({ notice, onLogin }: LoginPageProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const credentials = { username, password }
+    const registration = { ...credentials, name: name.trim() }
     const next =
       mode === 'login'
         ? validateLogin(credentials)
-        : validateRegistration(credentials)
+        : validateRegistration(registration)
     setErrors(next)
     setFormError(null)
     if (Object.keys(next).length > 0) return
 
     setLoading(true)
     try {
-      onLogin(await (mode === 'login' ? login : register)(credentials))
+      onLogin(
+        await (mode === 'login' ? login(credentials) : register(registration)),
+      )
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
         setErrors({ username: error.message })
@@ -101,6 +106,35 @@ export function LoginPage({ notice, onLogin }: LoginPageProps) {
             <h2>{copy.heading}</h2>
             <p>{(mode === 'login' && notice) || copy.hint}</p>
           </div>
+
+          {mode === 'register' && (
+            <div className={`field ${errors.name ? 'field--error' : ''}`}>
+              <label htmlFor="business-name" className="field__label">
+                Nombre del negocio
+              </label>
+              <div className="field__control">
+                <span className="field__icon">
+                  <BagIcon width={20} height={20} />
+                </span>
+                <input
+                  id="business-name"
+                  autoComplete="organization"
+                  placeholder="Arepera La Esquina"
+                  maxLength={MAX_NAME_LENGTH}
+                  value={name}
+                  disabled={loading}
+                  aria-invalid={Boolean(errors.name)}
+                  aria-describedby={errors.name ? 'name-error' : undefined}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </div>
+              {errors.name && (
+                <p id="name-error" className="field-error" role="alert">
+                  {errors.name}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className={`field ${errors.username ? 'field--error' : ''}`}>
             <label htmlFor="username" className="field__label">

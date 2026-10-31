@@ -42,7 +42,7 @@ Portal en `https://pedidos.example.com` y API en `https://pedidos.example.com/re
 | Método y ruta | Qué hace |
 | --- | --- |
 | `POST /auth/login` | Recibe `username` y `password`, devuelve `token` (dura 7 días) |
-| `POST /auth/register` | Afilia un comercio con `username` y `password`, sin verificación. Crea su ID y devuelve lo mismo que el login |
+| `POST /auth/register` | Afilia un comercio con `name` (nombre del negocio), `username` y `password`, sin verificación. Crea su ID y devuelve lo mismo que el login |
 | `POST /auth/logout` | Invalida el token |
 | `GET /me` | Datos del restaurante |
 | `GET /menu` | Menú completo por categorías |

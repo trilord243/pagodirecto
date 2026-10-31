@@ -60,15 +60,21 @@ export class AuthService {
   // Afiliacion abierta, sin verificacion. El comercio entra de una vez, y le
   // aparece a los clientes cuando publique su menu.
   async register(
+    name: string,
     username: string,
     password: string,
   ): Promise<{ token: string; restaurant: Restaurant }> {
     const { rows } = await this.db.query<Restaurant>(
       `insert into restaurants (public_id, name, username, password_hash)
-       values ($1, $2, $2, $3)
+       values ($1, $2, $3, $4)
        on conflict do nothing
        returning id, public_id as "restaurantId", name, username, currency`,
-      [restaurantPublicId(username), username, await hashPassword(password)],
+      [
+        restaurantPublicId(username),
+        name,
+        username,
+        await hashPassword(password),
+      ],
     );
     const restaurant = rows[0];
     if (!restaurant) {

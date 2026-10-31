@@ -21,6 +21,7 @@ export const LoginSchema = z.object({
 
 // Las mismas reglas que valida el portal.
 export const RegisterSchema = z.object({
+  name: z.string().trim().min(2).max(60),
   username: z
     .string()
     .trim()

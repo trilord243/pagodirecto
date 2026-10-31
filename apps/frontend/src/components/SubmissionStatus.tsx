@@ -1,18 +1,22 @@
 import type { ReactNode } from 'react'
 import { ChatIcon, CheckIcon, EditIcon, ScanIcon, UploadIcon } from './Icons.tsx'
+import { MenuLoader } from './MenuLoader.tsx'
 
-export type ProcessingStage = 'scanning' | 'ready' | 'published'
+export type ProcessingStage = 'uploading' | 'scanning' | 'ready' | 'published'
 
 interface SubmissionStatusProps {
   fileCount: number
   restaurantId: string
   stage: ProcessingStage
+  uploadPercent: number
   productCount: number
   onReview: () => void
   onReset: () => void
 }
 
 type StepState = 'done' | 'current' | 'pending'
+
+const WAIT_MESSAGE = 'Suele tardar menos de un minuto. Mantén esta página abierta.'
 
 const CHIP_LABEL: Record<StepState, string> = {
   done: 'Hecho',
@@ -24,25 +28,28 @@ export function SubmissionStatus({
   fileCount,
   restaurantId,
   stage,
+  uploadPercent,
   productCount,
   onReview,
   onReset,
 }: SubmissionStatusProps) {
+  const uploading = stage === 'uploading'
+  const working = uploading || stage === 'scanning'
+
   const steps: { icon: ReactNode; title: string; detail: string; state: StepState }[] = [
     {
       icon: <UploadIcon />,
-      title: 'Menú recibido',
+      title: uploading ? 'Subiendo tu menú' : 'Menú recibido',
       detail: `${fileCount} ${fileCount === 1 ? 'archivo' : 'archivos'}`,
-      state: 'done',
+      state: uploading ? 'current' : 'done',
     },
     {
       icon: <ScanIcon />,
-      title: stage === 'scanning' ? 'Escaneando tu menú' : 'Menú escaneado',
-      detail:
-        stage === 'scanning'
+      title: working ? 'Escaneando tu menú' : 'Menú escaneado',
+      detail: working
           ? 'Leemos platos, descripciones y precios.'
           : `Encontramos ${productCount} ${productCount === 1 ? 'producto' : 'productos'}.`,
-      state: stage === 'scanning' ? 'current' : 'done',
+      state: uploading ? 'pending' : stage === 'scanning' ? 'current' : 'done',
     },
     {
       icon: <EditIcon />,
@@ -51,8 +58,7 @@ export function SubmissionStatus({
         stage === 'published'
           ? 'Confirmaste tu menú.'
           : 'Verifica que todo esté correcto.',
-      state:
-        stage === 'scanning' ? 'pending' : stage === 'ready' ? 'current' : 'done',
+      state: working ? 'pending' : stage === 'ready' ? 'current' : 'done',
     },
     {
       icon: <ChatIcon />,
@@ -63,13 +69,15 @@ export function SubmissionStatus({
   ]
 
   const heading = {
+    uploading: 'Estamos subiendo tu menú',
     scanning: '¡Recibimos tu menú!',
     ready: 'Tu menú está listo para revisar',
     published: 'Tu menú ya está en WhatsApp',
   }[stage]
 
   const lead = {
-    scanning: 'Lo estamos escaneando. Esto puede tardar hasta un minuto.',
+    uploading: WAIT_MESSAGE,
+    scanning: WAIT_MESSAGE,
     ready:
       'Revisa lo que leímos y corrige cualquier detalle antes de publicarlo.',
     published:
@@ -78,13 +86,13 @@ export function SubmissionStatus({
 
   return (
     <div className="card status-card" role="status">
-      <span className={`status-card__check status-card__check--${stage}`}>
-        {stage === 'scanning' ? (
-          <ScanIcon width={30} height={30} />
-        ) : (
+      {working ? (
+        <MenuLoader stage={stage} uploadPercent={uploadPercent} />
+      ) : (
+        <span className="status-card__check">
           <CheckIcon width={30} height={30} />
-        )}
-      </span>
+        </span>
+      )}
       <h2>{heading}</h2>
       <p className="status-card__lead">{lead}</p>
 
@@ -106,13 +114,13 @@ export function SubmissionStatus({
       </p>
 
       <div className="status-card__actions">
-        {stage !== 'scanning' && (
+        {!working && (
           <button type="button" className="button button--primary" onClick={onReview}>
             {stage === 'ready' ? 'Revisar mi menú' : 'Editar menú'}
           </button>
         )}
         <button type="button" className="button button--ghost" onClick={onReset}>
-          Subir otro menú
+          {working ? 'Cancelar' : 'Subir otro menú'}
         </button>
       </div>
     </div>

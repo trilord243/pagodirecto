@@ -216,15 +216,21 @@ describe('restaurantes', () => {
   });
 
   describe('registro', () => {
-    const register = (username: string, password = PASSWORD) =>
-      api().post('/restaurants/auth/register').send({ username, password });
+    const register = (
+      username: string,
+      password = PASSWORD,
+      name: string | undefined = 'Mi Negocio',
+    ) =>
+      api()
+        .post('/restaurants/auth/register')
+        .send({ name, username, password });
 
     it('crea el comercio con su ID y deja la sesion iniciada', async () => {
       const { body } = await register('Nuevo.Local').expect(201);
 
       expect(body.restaurant).toMatchObject({
         username: 'nuevo.local',
-        name: 'nuevo.local',
+        name: 'Mi Negocio',
         restaurantId: restaurantPublicId('nuevo.local'),
         currency: 'USD',
       });
@@ -258,6 +264,25 @@ describe('restaurantes', () => {
       await register('valido', '12345').expect(400);
     });
 
+    it('exige el nombre del negocio', async () => {
+      await api()
+        .post('/restaurants/auth/register')
+        .send({ username: 'valido', password: PASSWORD })
+        .expect(400);
+      await register('valido', PASSWORD, ' ').expect(400);
+    });
+
+    it('el login devuelve el nombre del negocio', async () => {
+      await register('nuevo').expect(201);
+
+      const { body } = await api()
+        .post('/restaurants/auth/login')
+        .send({ username: 'nuevo', password: PASSWORD })
+        .expect(200);
+
+      expect(body.restaurant.name).toBe('Mi Negocio');
+    });
+
     it('aparece para los clientes solo cuando publica su menu', async () => {
       const { body } = await register('nuevo').expect(201);
       const before = JSON.parse(
@@ -278,7 +303,7 @@ describe('restaurantes', () => {
       );
       expect(before).toEqual([]);
       expect(after).toEqual([
-        { id: restaurantPublicId('nuevo'), nombre: 'nuevo' },
+        { id: restaurantPublicId('nuevo'), nombre: 'Mi Negocio' },
       ]);
     });
   });

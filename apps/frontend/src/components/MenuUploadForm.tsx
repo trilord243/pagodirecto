@@ -5,23 +5,21 @@ import { FileDropzone } from './FileDropzone.tsx'
 interface MenuUploadFormProps {
   // Los archivos del envío anterior, para reintentar sin volver a elegirlos.
   initialFiles: File[]
-  // null mientras no se está subiendo nada.
-  progress: number | null
   serverError: string | null
   onCancel: () => void
+  onManual: () => void
   onSubmit: (files: File[]) => void
 }
 
 export function MenuUploadForm({
   initialFiles,
-  progress,
   serverError,
   onCancel,
+  onManual,
   onSubmit,
 }: MenuUploadFormProps) {
   const [files, setFiles] = useState(initialFiles)
   const [error, setError] = useState<string | undefined>()
-  const uploading = progress !== null
   const message = error ?? serverError
 
   function addFiles(incoming: File[]) {
@@ -69,7 +67,6 @@ export function MenuUploadForm({
 
         <FileDropzone
           files={files}
-          disabled={uploading}
           onAdd={addFiles}
           onRemove={(index) => setFiles(files.filter((_, i) => i !== index))}
         />
@@ -81,39 +78,24 @@ export function MenuUploadForm({
       </section>
 
       <div className="form-actions">
-        {uploading && (
-          <div
-            className="progress"
-            role="progressbar"
-            aria-label="Subiendo menú"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress}
-          >
-            <span style={{ width: `${progress}%` }} />
-          </div>
-        )}
         <div className="form-actions__buttons">
           <button
             type="button"
             className="button button--ghost"
             onClick={onCancel}
-            disabled={uploading}
           >
             Volver
           </button>
-          <button
-            type="submit"
-            className="button button--primary"
-            disabled={uploading}
-          >
-            {uploading
-              ? `Subiendo… ${progress}%`
-              : serverError
-                ? 'Intentar de nuevo'
-                : 'Enviar menú'}
+          <button type="submit" className="button button--primary">
+            {serverError ? 'Intentar de nuevo' : 'Enviar menú'}
           </button>
         </div>
+        <p className="form-actions__alternative">
+          ¿No tienes el menú en un archivo?{' '}
+          <button type="button" className="text-button" onClick={onManual}>
+            Créalo a mano, plato por plato
+          </button>
+        </p>
         <p className="form-actions__legal">
           Al enviar confirmas que eres responsable del comercio y de la
           información del menú.

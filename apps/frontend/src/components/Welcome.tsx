@@ -1,23 +1,25 @@
 import type { Session } from '../lib/auth.ts'
-import { ChatIcon, MenuIcon, UploadIcon } from './Icons.tsx'
+import { ChatIcon, EditIcon, MenuIcon, UploadIcon } from './Icons.tsx'
 
 interface WelcomeProps {
   session: Session
   onUpload: () => void
+  onManual: () => void
 }
 
-export function Welcome({ session, onUpload }: WelcomeProps) {
+export function Welcome({ session, onUpload, onManual }: WelcomeProps) {
   return (
     <section className="card welcome-card">
       <span className="welcome-card__icon">
         <MenuIcon width={30} height={30} />
       </span>
       <div>
-        <span className="welcome-card__eyebrow">¡Hola, {session.username}!</span>
+        <span className="welcome-card__eyebrow">¡Hola, {session.name}!</span>
         <h2>Bienvenido a tu portal</h2>
         <p>
-          Todavía no tienes un menú activo. Súbelo y el agente de WhatsApp de
-          PagoDirecto podrá mostrarlo y tomar pedidos de tus clientes.
+          Todavía no tienes un menú activo. Súbelo en un archivo o créalo a
+          mano, y el agente de WhatsApp de PagoDirecto podrá mostrarlo y tomar
+          pedidos de tus clientes.
         </p>
       </div>
 
@@ -32,13 +34,22 @@ export function Welcome({ session, onUpload }: WelcomeProps) {
         </span>
       </div>
 
-      <button
-        type="button"
-        className="button button--primary welcome-card__cta"
-        onClick={onUpload}
-      >
-        <UploadIcon width={20} height={20} /> Subir mi menú
-      </button>
+      <div className="welcome-card__actions">
+        <button
+          type="button"
+          className="button button--primary"
+          onClick={onUpload}
+        >
+          <UploadIcon width={20} height={20} /> Subir mi menú
+        </button>
+        <button
+          type="button"
+          className="button button--ghost"
+          onClick={onManual}
+        >
+          <EditIcon width={20} height={20} /> Crearlo a mano
+        </button>
+      </div>
     </section>
   )
 }

@@ -33,8 +33,8 @@ export class AuthController {
 
   @Post('auth/register')
   register(@Body() body: unknown) {
-    const { username, password } = parseBody(RegisterSchema, body);
-    return this.auth.register(username, password);
+    const { name, username, password } = parseBody(RegisterSchema, body);
+    return this.auth.register(name, username, password);
   }
 
   @Post('auth/logout')

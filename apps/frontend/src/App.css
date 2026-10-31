@@ -13,10 +13,12 @@
   margin: 0 auto;
 }
 
+/* Las columnas laterales miden lo mismo para que el logo quede centrado. */
 .site-header__bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
+  gap: 16px;
   padding: 12px 20px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
@@ -30,8 +32,9 @@
 }
 
 .site-header__brand {
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
-  flex: none;
 
   img {
     display: block;
@@ -45,6 +48,9 @@
 }
 
 .site-header__tag {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
   font-family: var(--heading);
   font-weight: 500;
   font-size: 14px;
@@ -54,22 +60,17 @@
   background: rgba(255, 255, 255, 0.12);
 }
 
-.site-header__session {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
 .site-header__user {
+  grid-column: 1;
+  grid-row: 1;
   display: grid;
-  justify-items: end;
+  justify-items: start;
   min-width: 0;
   line-height: 1.2;
 }
 
-.site-header__username {
-  max-width: 180px;
+.site-header__name {
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -77,10 +78,6 @@
   font-weight: 500;
   font-size: 14px;
   color: #fff;
-
-  @media (max-width: 480px) {
-    display: none;
-  }
 }
 
 .site-header__id {
@@ -92,10 +89,16 @@
   font-weight: 500;
   letter-spacing: 0.04em;
   color: #ff7aa8;
+
+  @media (max-width: 480px) {
+    font-size: 11px;
+  }
 }
 
 .site-header__logout {
-  flex: none;
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
   display: grid;
   place-items: center;
   width: 40px;
@@ -431,11 +434,18 @@
   color: var(--text);
 }
 
-.welcome-card__cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.welcome-card__actions {
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+
+  .button {
+    flex: 1 1 200px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
 }
 
 /* ---------- Dropzone ---------- */
@@ -625,6 +635,16 @@
   gap: 10px;
 }
 
+.form-actions__alternative {
+  font-size: 15px;
+  text-align: center;
+
+  .text-button {
+    color: var(--pink);
+    font-weight: 700;
+  }
+}
+
 .form-actions__legal {
   font-size: 13px;
   color: var(--muted);
@@ -674,21 +694,6 @@
 
   &:hover {
     background: var(--border);
-  }
-}
-
-.progress {
-  height: 8px;
-  border-radius: 999px;
-  background: var(--bg);
-  overflow: hidden;
-
-  span {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, var(--pink), var(--plum));
-    transition: width 0.15s;
   }
 }
 
@@ -841,24 +846,6 @@
   color: #fff;
   background: var(--success);
   box-shadow: 0 10px 24px -10px rgba(18, 164, 107, 0.8);
-}
-
-.status-card__check--scanning {
-  background: var(--pink);
-  box-shadow: 0 10px 24px -10px rgba(255, 0, 96, 0.8);
-  animation: pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  50% {
-    transform: scale(0.92);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .status-card__check--scanning {
-    animation: none;
-  }
 }
 
 .status-card__actions {

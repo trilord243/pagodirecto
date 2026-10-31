@@ -16,6 +16,8 @@ import './OrdersView.css'
 
 const STATUS_OPTIONS = Object.keys(ORDER_STATUS_LABEL) as OrderStatus[]
 
+type OrderFilter = OrderStatus | 'all'
+
 interface OrdersViewProps {
   token: string
 }
@@ -25,6 +27,10 @@ export function OrdersView({ token }: OrdersViewProps) {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [attempt, setAttempt] = useState(0)
+  const [filter, setFilter] = useState<OrderFilter>('all')
+  const shown = orders?.filter(
+    (order) => filter === 'all' || order.status === filter,
+  )
 
   useEffect(() => {
     const controller = new AbortController()
@@ -72,8 +78,33 @@ export function OrdersView({ token }: OrdersViewProps) {
       )}
 
       {orders && orders.length > 0 && (
+        <div className="orders__filters" role="group" aria-label="Filtrar pedidos">
+          {(['all', ...STATUS_OPTIONS] as OrderFilter[]).map((option) => (
+            <button
+              key={option}
+              type="button"
+              className="orders__filter"
+              aria-pressed={filter === option}
+              onClick={() => setFilter(option)}
+            >
+              {option === 'all' ? 'Todos' : ORDER_STATUS_LABEL[option]}{' '}
+              <span>
+                {option === 'all'
+                  ? orders.length
+                  : orders.filter(({ status }) => status === option).length}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {shown?.length === 0 && orders?.length !== 0 && (
+        <LoadState message="No tienes pedidos en este estado." />
+      )}
+
+      {shown && shown.length > 0 && (
         <ul className="orders__list">
-          {orders.map((order) => (
+          {shown.map((order) => (
             <OrderCard
               key={order.id}
               token={token}

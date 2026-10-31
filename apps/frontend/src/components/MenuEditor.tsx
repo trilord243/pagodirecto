@@ -51,6 +51,7 @@ export function MenuEditor({
   // Cualquier edición crea otro objeto, y con eso se apaga el "guardado".
   const [savedMenu, setSavedMenu] = useState<EditableMenu | null>(null)
   const { total, toReview } = countItems(menu)
+  const manual = !published && !hasOriginal
 
   const defaultNotice =
     menu === savedMenu
@@ -155,11 +156,19 @@ export function MenuEditor({
       <section className="card editor-summary">
         <div>
           <span className="editor-summary__eyebrow">{accountName}</span>
-          <h2>{published ? 'Tu menú publicado' : 'Revisa tu menú'}</h2>
+          <h2>
+            {published
+              ? 'Tu menú publicado'
+              : manual
+                ? 'Crea tu menú'
+                : 'Revisa tu menú'}
+          </h2>
           <p>
             {published
               ? 'Esto es lo que tus clientes ven en WhatsApp. Cambia nombres, precios o disponibilidad cuando quieras.'
-              : 'Esto es lo que leímos de tu menú. Así lo verán tus clientes en WhatsApp: corrige nombres, precios o disponibilidad antes de publicarlo.'}
+              : manual
+                ? 'Agrega una categoría, por ejemplo Bebidas, y sus productos con el precio de cada uno.'
+                : 'Esto es lo que leímos de tu menú. Así lo verán tus clientes en WhatsApp: corrige nombres, precios o disponibilidad antes de publicarlo.'}
           </p>
           {hasOriginal && (
             <button

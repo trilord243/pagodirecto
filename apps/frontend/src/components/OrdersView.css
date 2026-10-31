@@ -31,6 +31,38 @@
   }
 }
 
+.orders__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.orders__filter {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+
+  span {
+    color: var(--muted);
+  }
+
+  &[aria-pressed='true'] {
+    border-color: var(--pink);
+    background: var(--pink-bg);
+    color: var(--pink-dark);
+
+    span {
+      color: inherit;
+    }
+  }
+}
+
 .orders__list {
   list-style: none;
   margin: 0;
