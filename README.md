@@ -55,6 +55,7 @@ Portal en `https://pedidos.example.com` y API en `https://pedidos.example.com/re
 | `GET /loyalty` y `PUT /loyalty` | Tarjeta de fidelidad del comercio (`stampsRequired`, `rewardItemId`, `active`) y sus clientes |
 | `GET, POST /promotions` y `PATCH, DELETE /promotions/:id` | Promociones por porcentaje, con `minPurchases` y `minTotal` opcionales |
 | `GET, POST /insights` | Asesor de negocio con IA. Complemento que se activa con `restaurants.insights_enabled` |
+| `GET /iq?mode=demo` o `mode=real` | PagoDirecto IQ: panel de ventas, clientes y comparación anónima. `demo` son cifras de ejemplo con los platos del comercio; `real` exige el plan activo |
 | `GET /orders` | Últimos 200 pedidos, con el teléfono del cliente |
 | `PATCH /orders/:id` | Cambia `status` (`pending`, `confirmed`, `ready`, `delivered`, `cancelled`) o `paymentStatus` (`pending`, `paid`) |
 

@@ -10,6 +10,8 @@ import {
 } from './menu-analyzer.service.js';
 import { InsightsController } from './insights.controller.js';
 import { InsightsService } from './insights.service.js';
+import { IqController } from './iq.controller.js';
+import { IqService } from './iq.service.js';
 import { LoyaltyController } from './loyalty.controller.js';
 import { LoyaltyService } from './loyalty.service.js';
 import { MenuController } from './menu.controller.js';
@@ -25,6 +27,7 @@ import { WalletService } from './wallet.service.js';
   controllers: [
     AuthController,
     InsightsController,
+    IqController,
     LoyaltyController,
     MenuController,
     OrdersController,
@@ -34,6 +37,7 @@ import { WalletService } from './wallet.service.js';
     { provide: MENU_ANALYZER_CLIENT, useFactory: () => new Anthropic() },
     AuthService,
     InsightsService,
+    IqService,
     LoyaltyService,
     MenuAnalyzerService,
     MenuService,
