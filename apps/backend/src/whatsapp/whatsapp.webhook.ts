@@ -1,0 +1,68 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
+export interface InboundMessage {
+  id: string;
+  from: string;
+  type: string;
+  text?: string;
+}
+
+interface WebhookPayload {
+  entry?: {
+    changes?: {
+      field?: string;
+      value?: {
+        metadata?: { phone_number_id?: string };
+        messages?: {
+          id: string;
+          from: string;
+          type: string;
+          text?: { body?: string };
+        }[];
+      };
+    }[];
+  }[];
+}
+
+export function safeEqual(a: string, b: string): boolean {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+export function isValidSignature(
+  rawBody: Buffer | undefined,
+  signature: string | undefined,
+  appSecret: string,
+): boolean {
+  if (!rawBody || !signature || !appSecret) {
+    return false;
+  }
+  const expected = createHmac('sha256', appSecret)
+    .update(rawBody)
+    .digest('hex');
+  return safeEqual(signature, `sha256=${expected}`);
+}
+
+// Solo mensajes de clientes hacia nuestro numero: una misma app de Meta puede
+// recibir eventos de otros numeros, y las notificaciones de entrega traen
+// `statuses` en vez de `messages`.
+export function extractInboundMessages(
+  payload: WebhookPayload,
+  phoneNumberId: string,
+): InboundMessage[] {
+  return (payload.entry ?? [])
+    .flatMap((entry) => entry.changes ?? [])
+    .filter(
+      (change) =>
+        change.field === 'messages' &&
+        change.value?.metadata?.phone_number_id === phoneNumberId,
+    )
+    .flatMap((change) => change.value?.messages ?? [])
+    .map(({ id, from, type, text }) => ({
+      id,
+      from,
+      type,
+      text: text?.body,
+    }));
+}
