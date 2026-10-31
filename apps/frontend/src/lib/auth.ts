@@ -1,4 +1,7 @@
+import { apiRequest } from './api.ts'
+
 export interface Session {
+  token: string
   username: string
   // Identificador del comercio con el que el agente de WhatsApp lo busca.
   restaurantId: string
@@ -14,13 +17,30 @@ export interface CredentialErrors {
   password?: string
 }
 
+interface AuthResponse {
+  token: string
+  restaurant: { restaurantId: string; username: string }
+}
+
 const SESSION_KEY = 'pd-comercios-session'
 const USERNAME_PATTERN = /^[a-z0-9._-]{3,30}$/
 const MIN_PASSWORD_LENGTH = 6
 
-export const normalizeUsername = (raw: string) => raw.trim().toLowerCase()
+const normalizeUsername = (raw: string) => raw.trim().toLowerCase()
 
-export function validateCredentials({
+// Al ingresar solo se evita un viaje en vano: quien decide es el backend, y las
+// cuentas existentes pueden no cumplir las reglas de registro.
+export function validateLogin({
+  username,
+  password,
+}: Credentials): CredentialErrors {
+  const errors: CredentialErrors = {}
+  if (!username.trim()) errors.username = 'Ingresa tu usuario.'
+  if (!password) errors.password = 'Ingresa tu contraseña.'
+  return errors
+}
+
+export function validateRegistration({
   username,
   password,
 }: Credentials): CredentialErrors {
@@ -35,23 +55,34 @@ export function validateCredentials({
   return errors
 }
 
-// El mismo usuario siempre obtiene el mismo ID, así el agente de WhatsApp
-// puede encontrar el comercio en cualquier momento. Formato: PD-XXXXXXXX.
-export async function restaurantIdFor(username: string): Promise<string> {
-  const data = new TextEncoder().encode(normalizeUsername(username))
-  const digest = await crypto.subtle.digest('SHA-256', data)
-  const hex = Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, '0'),
-  ).join('')
-  return `PD-${hex.slice(0, 8).toUpperCase()}`
+async function authenticate(
+  path: string,
+  { username, password }: Credentials,
+): Promise<Session> {
+  const { token, restaurant } = await apiRequest<AuthResponse>(path, {
+    method: 'POST',
+    body: { username: normalizeUsername(username), password },
+  })
+  return {
+    token,
+    username: restaurant.username,
+    restaurantId: restaurant.restaurantId,
+  }
 }
 
-// TODO: reemplazar por la autenticación real del backend. Por ahora acepta
-// cualquier usuario y contraseña con formato válido y no verifica la clave.
-export async function login(credentials: Credentials): Promise<Session> {
-  await new Promise((resolve) => setTimeout(resolve, 600))
-  const username = normalizeUsername(credentials.username)
-  return { username, restaurantId: await restaurantIdFor(username) }
+export const login = (credentials: Credentials) =>
+  authenticate('/restaurants/auth/login', credentials)
+
+// Crea el comercio y su ID, y deja la sesión abierta igual que el login.
+export const register = (credentials: Credentials) =>
+  authenticate('/restaurants/auth/register', credentials)
+
+export async function logout(token: string) {
+  try {
+    await apiRequest('/restaurants/auth/logout', { method: 'POST', token })
+  } catch {
+    // La sesión local ya se cerró; en el servidor el token vence solo.
+  }
 }
 
 // La sesión dura mientras la pestaña esté abierta. Nunca se guarda la clave.
@@ -60,8 +91,12 @@ export function loadSession(): Session | null {
     const raw = sessionStorage.getItem(SESSION_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<Session>
-    return parsed.username && parsed.restaurantId
-      ? { username: parsed.username, restaurantId: parsed.restaurantId }
+    return parsed.token && parsed.username && parsed.restaurantId
+      ? {
+          token: parsed.token,
+          username: parsed.username,
+          restaurantId: parsed.restaurantId,
+        }
       : null
   } catch {
     return null

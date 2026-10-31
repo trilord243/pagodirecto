@@ -22,15 +22,25 @@
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(12px);
+
+  @media (max-width: 480px) {
+    gap: 8px;
+    padding: 10px 12px;
+  }
 }
 
 .site-header__brand {
   display: flex;
+  flex: none;
 
   img {
     display: block;
     height: 25px;
     width: auto;
+
+    @media (max-width: 480px) {
+      height: 20px;
+    }
   }
 }
 
@@ -74,6 +84,10 @@
 }
 
 .site-header__id {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.04em;
@@ -130,6 +144,18 @@
   border: 1px solid rgba(255, 0, 96, 0.5);
 }
 
+.portal-tabs {
+  margin-top: 20px;
+}
+
+.load-state {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  padding: 24px 0;
+  text-align: center;
+}
+
 /* ---------- Login ---------- */
 
 .login {
@@ -162,6 +188,27 @@
   font-size: 13px;
   color: var(--muted);
   text-align: center;
+}
+
+.login-card__switch {
+  font-size: 14px;
+  text-align: center;
+
+  button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--pink);
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: progress;
+    }
+  }
 }
 
 .field__control--action input {

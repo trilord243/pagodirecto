@@ -1,3 +1,5 @@
+import { apiRequest } from './api.ts'
+
 export type Currency = 'USD' | 'VES'
 
 export interface MenuItem {
@@ -17,13 +19,28 @@ export interface MenuCategory {
   items: MenuItem[]
 }
 
-export interface ScannedMenu {
+export interface EditableMenu {
   currency: Currency
   categories: MenuCategory[]
 }
 
 export interface MenuErrors {
   [fieldKey: string]: string
+}
+
+// Lo que devuelve la API. Solo el escaneo trae precios sin leer y reviewReason.
+export interface ApiMenu {
+  currency: Currency
+  categories: {
+    name: string
+    items: {
+      name: string
+      description: string | null
+      price: number | null
+      available: boolean
+      reviewReason?: string | null
+    }[]
+  }[]
 }
 
 export const CURRENCY_SYMBOL: Record<Currency, string> = {
@@ -59,14 +76,77 @@ export function parsePrice(raw: string): number | null {
   return value > 0 ? value : null
 }
 
+const formatPrice = (price: number) => price.toFixed(2).replace('.', ',')
+
+export function toEditableMenu({ currency, categories }: ApiMenu): EditableMenu {
+  return {
+    currency,
+    categories: categories.map((category) =>
+      createCategory(
+        category.name,
+        category.items.map((item) =>
+          createItem({
+            name: item.name,
+            description: item.description ?? '',
+            price: item.price === null ? '' : formatPrice(item.price),
+            available: item.available,
+            reviewReason: item.reviewReason ?? null,
+          }),
+        ),
+      ),
+    ),
+  }
+}
+
+// Se llama después de validateMenu: todos los precios ya son válidos.
+function toPublishBody({ currency, categories }: EditableMenu) {
+  return {
+    currency,
+    categories: categories.map((category) => ({
+      name: category.name.trim(),
+      items: category.items.map((item) => ({
+        name: item.name.trim(),
+        description: item.description.trim() || undefined,
+        price: parsePrice(item.price),
+        available: item.available,
+      })),
+    })),
+  }
+}
+
+export async function fetchMenu(
+  token: string,
+  signal: AbortSignal,
+): Promise<EditableMenu> {
+  return toEditableMenu(
+    await apiRequest<ApiMenu>('/restaurants/menu', { token, signal }),
+  )
+}
+
+// Reemplaza el menú completo: lo que no venga aquí se borra en el servidor.
+export async function publishMenu(
+  token: string,
+  menu: EditableMenu,
+): Promise<EditableMenu> {
+  return toEditableMenu(
+    await apiRequest<ApiMenu>('/restaurants/menu', {
+      method: 'PUT',
+      token,
+      body: toPublishBody(menu),
+    }),
+  )
+}
+
 export const fieldKey = (itemId: string, field: 'name' | 'price') =>
   `${itemId}:${field}`
 
-export function validateMenu(menu: ScannedMenu): MenuErrors {
+export function validateMenu(menu: EditableMenu): MenuErrors {
   const errors: MenuErrors = {}
   for (const category of menu.categories) {
     if (!category.name.trim()) {
       errors[category.id] = 'Ponle nombre a la categoría.'
+    } else if (category.items.length === 0) {
+      errors[category.id] = 'Agrega un producto o elimina la categoría.'
     }
     for (const item of category.items) {
       if (!item.name.trim()) {
@@ -80,67 +160,10 @@ export function validateMenu(menu: ScannedMenu): MenuErrors {
   return errors
 }
 
-export function countItems(menu: ScannedMenu) {
+export function countItems(menu: EditableMenu) {
   const items = menu.categories.flatMap((category) => category.items)
   return {
     total: items.length,
     toReview: items.filter((item) => item.reviewReason).length,
-  }
-}
-
-// TODO: reemplazar por la respuesta real del escaneo cuando exista el backend.
-// Devuelve un menú de ejemplo con algunos productos marcados para revisión.
-export async function scanMenu(): Promise<ScannedMenu> {
-  await new Promise((resolve) => setTimeout(resolve, 2500))
-  return {
-    currency: 'USD',
-    categories: [
-      createCategory('Arepas', [
-        createItem({
-          name: 'Reina pepiada',
-          description: 'Pollo desmechado, aguacate y mayonesa.',
-          price: '4,50',
-        }),
-        createItem({
-          name: 'Pabellón',
-          description: 'Carne mechada, caraotas, tajadas y queso blanco.',
-          price: '5,00',
-        }),
-        createItem({
-          name: 'Dominó',
-          description: 'Caraotas negras y queso blanco rallado.',
-          price: '',
-          reviewReason: 'No pudimos leer el precio.',
-        }),
-      ]),
-      createCategory('Empanadas', [
-        createItem({
-          name: 'Carne molida',
-          description: '',
-          price: '2,00',
-        }),
-        createItem({
-          name: 'Cazón',
-          description: 'Disponible solo fines de semana.',
-          price: '2,50',
-          available: false,
-        }),
-        createItem({
-          name: 'Queso de mano',
-          description: '',
-          price: '1,80',
-          reviewReason: 'El nombre no se veía claro en la foto.',
-        }),
-      ]),
-      createCategory('Bebidas', [
-        createItem({ name: 'Papelón con limón', description: '', price: '1,50' }),
-        createItem({
-          name: 'Jugo natural',
-          description: 'Parchita, mora o guayaba.',
-          price: '2,00',
-        }),
-        createItem({ name: 'Malta', description: '', price: '1,20' }),
-      ]),
-    ],
   }
 }

@@ -1,27 +1,28 @@
 import { useState, type FormEvent } from 'react'
-import {
-  MAX_FILES,
-  submitMenu,
-  validateFile,
-  type MenuSubmission,
-} from '../lib/menuUpload.ts'
+import { MAX_FILES, validateFile } from '../lib/menuUpload.ts'
 import { FileDropzone } from './FileDropzone.tsx'
 
 interface MenuUploadFormProps {
-  restaurantId: string
+  // Los archivos del envío anterior, para reintentar sin volver a elegirlos.
+  initialFiles: File[]
+  // null mientras no se está subiendo nada.
+  progress: number | null
+  serverError: string | null
   onCancel: () => void
-  onSubmitted: (submission: MenuSubmission) => void
+  onSubmit: (files: File[]) => void
 }
 
 export function MenuUploadForm({
-  restaurantId,
+  initialFiles,
+  progress,
+  serverError,
   onCancel,
-  onSubmitted,
+  onSubmit,
 }: MenuUploadFormProps) {
-  const [files, setFiles] = useState<File[]>([])
+  const [files, setFiles] = useState(initialFiles)
   const [error, setError] = useState<string | undefined>()
-  const [progress, setProgress] = useState<number | null>(null)
   const uploading = progress !== null
+  const message = error ?? serverError
 
   function addFiles(incoming: File[]) {
     const accepted: File[] = []
@@ -45,7 +46,7 @@ export function MenuUploadForm({
     setError(problem)
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (files.length === 0) {
       setError('Sube al menos un archivo con tu menú.')
@@ -53,8 +54,7 @@ export function MenuUploadForm({
     }
 
     setError(undefined)
-    setProgress(0)
-    onSubmitted(await submitMenu(restaurantId, files, setProgress))
+    onSubmit(files)
   }
 
   return (
@@ -73,9 +73,9 @@ export function MenuUploadForm({
           onAdd={addFiles}
           onRemove={(index) => setFiles(files.filter((_, i) => i !== index))}
         />
-        {error && (
+        {message && (
           <p className="field-error" role="alert">
-            {error}
+            {message}
           </p>
         )}
       </section>
@@ -107,7 +107,11 @@ export function MenuUploadForm({
             className="button button--primary"
             disabled={uploading}
           >
-            {uploading ? `Subiendo… ${progress}%` : 'Enviar menú'}
+            {uploading
+              ? `Subiendo… ${progress}%`
+              : serverError
+                ? 'Intentar de nuevo'
+                : 'Enviar menú'}
           </button>
         </div>
         <p className="form-actions__legal">

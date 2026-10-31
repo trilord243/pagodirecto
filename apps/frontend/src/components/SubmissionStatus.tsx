@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
-import type { MenuSubmission } from '../lib/menuUpload.ts'
 import { ChatIcon, CheckIcon, EditIcon, ScanIcon, UploadIcon } from './Icons.tsx'
 
 export type ProcessingStage = 'scanning' | 'ready' | 'published'
 
 interface SubmissionStatusProps {
-  submission: MenuSubmission
+  fileCount: number
+  restaurantId: string
   stage: ProcessingStage
   productCount: number
   onReview: () => void
@@ -21,14 +21,13 @@ const CHIP_LABEL: Record<StepState, string> = {
 }
 
 export function SubmissionStatus({
-  submission,
+  fileCount,
+  restaurantId,
   stage,
   productCount,
   onReview,
   onReset,
 }: SubmissionStatusProps) {
-  const fileCount = submission.files.length
-
   const steps: { icon: ReactNode; title: string; detail: string; state: StepState }[] = [
     {
       icon: <UploadIcon />,
@@ -42,7 +41,7 @@ export function SubmissionStatus({
       detail:
         stage === 'scanning'
           ? 'Leemos platos, descripciones y precios.'
-          : `Encontramos ${productCount} productos.`,
+          : `Encontramos ${productCount} ${productCount === 1 ? 'producto' : 'productos'}.`,
       state: stage === 'scanning' ? 'current' : 'done',
     },
     {
@@ -58,7 +57,7 @@ export function SubmissionStatus({
     {
       icon: <ChatIcon />,
       title: 'Activo en WhatsApp',
-      detail: `Los clientes encuentran tu menú con el ID ${submission.restaurantId}.`,
+      detail: `Los clientes encuentran tu menú con el ID ${restaurantId}.`,
       state: stage === 'published' ? 'done' : 'pending',
     },
   ]
@@ -70,8 +69,7 @@ export function SubmissionStatus({
   }[stage]
 
   const lead = {
-    scanning:
-      'Lo estamos escaneando. Esto toma solo unos segundos.',
+    scanning: 'Lo estamos escaneando. Esto puede tardar hasta un minuto.',
     ready:
       'Revisa lo que leímos y corrige cualquier detalle antes de publicarlo.',
     published:
@@ -104,8 +102,7 @@ export function SubmissionStatus({
       </ol>
 
       <p className="status-card__ref">
-        ID del comercio: <code>{submission.restaurantId}</code> · Envío{' '}
-        <code>{submission.id.slice(0, 8).toUpperCase()}</code>
+        ID del comercio: <code>{restaurantId}</code>
       </p>
 
       <div className="status-card__actions">

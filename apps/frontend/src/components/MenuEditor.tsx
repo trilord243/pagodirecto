@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { errorMessage } from '../lib/api.ts'
 import {
   CURRENCY_SYMBOL,
   countItems,
@@ -7,33 +8,58 @@ import {
   fieldKey,
   validateMenu,
   type Currency,
+  type EditableMenu,
   type MenuCategory,
   type MenuErrors,
   type MenuItem,
-  type ScannedMenu,
 } from '../lib/menu.ts'
 import { AlertIcon, CheckIcon, PlusIcon, TrashIcon } from './Icons.tsx'
 import './MenuEditor.css'
 
+// Los mismos límites que aplica el backend al publicar.
+const MAX_CATEGORY_NAME = 80
+const MAX_ITEM_NAME = 120
+const MAX_DESCRIPTION = 500
+
 interface MenuEditorProps {
   accountName: string
-  initialMenu: ScannedMenu
+  initialMenu: EditableMenu
   published: boolean
+  // Hay archivos subidos con los que comparar lo que se leyó.
+  hasOriginal: boolean
+  // Publicar este menú borra el que ya está activo en WhatsApp.
+  replacesPublished: boolean
+  cancelLabel: string
   onCancel: () => void
-  onPublish: (menu: ScannedMenu) => void
+  onPublish: (menu: EditableMenu) => Promise<EditableMenu>
 }
 
 export function MenuEditor({
   accountName,
   initialMenu,
   published,
+  hasOriginal,
+  replacesPublished,
+  cancelLabel,
   onCancel,
   onPublish,
 }: MenuEditorProps) {
   const [menu, setMenu] = useState(initialMenu)
   const [errors, setErrors] = useState<MenuErrors>({})
   const [notice, setNotice] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  // Cualquier edición crea otro objeto, y con eso se apaga el "guardado".
+  const [savedMenu, setSavedMenu] = useState<EditableMenu | null>(null)
   const { total, toReview } = countItems(menu)
+
+  const defaultNotice =
+    menu === savedMenu
+      ? 'Cambios guardados.'
+      : published
+        ? 'Tu menú ya está publicado. Los cambios se aplicarán al guardar.'
+        : replacesPublished
+          ? 'Al publicar, este menú reemplaza al que tienes activo.'
+          : ''
 
   function clearError(key: string) {
     if (!(key in errors)) return
@@ -87,7 +113,7 @@ export function MenuEditor({
     }))
   }
 
-  function handlePublish() {
+  async function handlePublish() {
     const nextErrors = validateMenu(menu)
     setErrors(nextErrors)
     const errorCount = Object.keys(nextErrors).length
@@ -104,7 +130,16 @@ export function MenuEditor({
       )
     } else {
       setNotice(null)
-      onPublish(menu)
+      setSaving(true)
+      try {
+        const saved = await onPublish(menu)
+        setMenu(saved)
+        setSavedMenu(saved)
+      } catch (error) {
+        setNotice(errorMessage(error))
+      } finally {
+        setSaving(false)
+      }
       return
     }
 
@@ -120,23 +155,25 @@ export function MenuEditor({
       <section className="card editor-summary">
         <div>
           <span className="editor-summary__eyebrow">{accountName}</span>
-          <h2>Revisa tu menú</h2>
+          <h2>{published ? 'Tu menú publicado' : 'Revisa tu menú'}</h2>
           <p>
-            Esto es lo que leímos de tu menú. Así lo verán tus clientes en
-            WhatsApp: corrige nombres, precios o disponibilidad antes de
-            publicarlo.
+            {published
+              ? 'Esto es lo que tus clientes ven en WhatsApp. Cambia nombres, precios o disponibilidad cuando quieras.'
+              : 'Esto es lo que leímos de tu menú. Así lo verán tus clientes en WhatsApp: corrige nombres, precios o disponibilidad antes de publicarlo.'}
           </p>
-          <button
-            type="button"
-            className="text-button editor-summary__original"
-            onClick={() =>
-              document
-                .querySelector('.original-card')
-                ?.scrollIntoView({ behavior: 'smooth' })
-            }
-          >
-            Ver menú original
-          </button>
+          {hasOriginal && (
+            <button
+              type="button"
+              className="text-button editor-summary__original"
+              onClick={() =>
+                document
+                  .querySelector('.original-card')
+                  ?.scrollIntoView({ behavior: 'smooth' })
+              }
+            >
+              Ver menú original
+            </button>
+          )}
         </div>
 
         <div className="editor-summary__row">
@@ -189,6 +226,7 @@ export function MenuEditor({
               <input
                 className={`category__name ${errors[category.id] ? 'category__name--error' : ''}`}
                 value={category.name}
+                maxLength={MAX_CATEGORY_NAME}
                 placeholder="Nombre de la categoría"
                 aria-label="Nombre de la categoría"
                 onChange={(event) => {
@@ -238,11 +276,12 @@ export function MenuEditor({
           <button
             type="button"
             className="add-button"
-            onClick={() =>
+            onClick={() => {
               updateCategory(category.id, {
                 items: [...category.items, createItem()],
               })
-            }
+              clearError(category.id)
+            }}
           >
             <PlusIcon width={18} height={18} /> Agregar producto
           </button>
@@ -264,18 +303,30 @@ export function MenuEditor({
 
       <div className="editor-bar">
         <p className="editor-bar__notice" role="status">
-          {notice ?? (published ? 'Tu menú ya está publicado. Los cambios se aplicarán al guardar.' : '')}
+          {notice ?? defaultNotice}
         </p>
         <div className="editor-bar__actions">
-          <button type="button" className="button button--ghost" onClick={onCancel}>
-            Volver
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={onCancel}
+            disabled={saving}
+          >
+            {cancelLabel}
           </button>
           <button
             type="button"
             className="button button--primary"
             onClick={handlePublish}
+            disabled={saving}
           >
-            {published ? 'Guardar cambios' : 'Publicar en WhatsApp'}
+            {saving
+              ? published
+                ? 'Guardando…'
+                : 'Publicando…'
+              : published
+                ? 'Guardar cambios'
+                : 'Publicar en WhatsApp'}
           </button>
         </div>
       </div>
@@ -324,6 +375,7 @@ function ItemEditor({ item, currency, errors, onChange, onRemove }: ItemEditorPr
           <span className="item__label">Producto</span>
           <input
             value={item.name}
+            maxLength={MAX_ITEM_NAME}
             placeholder="Nombre del producto"
             aria-invalid={Boolean(nameError)}
             onChange={(event) => onChange({ name: event.target.value })}
@@ -352,6 +404,7 @@ function ItemEditor({ item, currency, errors, onChange, onRemove }: ItemEditorPr
         <textarea
           rows={2}
           value={item.description}
+          maxLength={MAX_DESCRIPTION}
           placeholder="Ingredientes, tamaño o detalles para tus clientes"
           onChange={(event) => onChange({ description: event.target.value })}
         />
