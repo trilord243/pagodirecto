@@ -1,6 +1,8 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PGlite } from '@electric-sql/pglite';
+import jsQR from 'jsqr';
+import sharp from 'sharp';
 import request from 'supertest';
 import { DatabaseService } from '../database/database.service.js';
 import type { Queryable } from '../database/database.service.js';
@@ -27,6 +29,7 @@ import { renderQr, renderRestaurantsImage } from './whatsapp-images.js';
 
 const PASSWORD = 'clave-de-prueba';
 const PHONE = '584120000000';
+const CUSTOMER = { phone: PHONE, name: 'Ana' };
 const ID_A = restaurantPublicId('a');
 const ID_B = restaurantPublicId('b');
 const PNG_SIGNATURE = '89504e470d0a1a0a';
@@ -286,7 +289,7 @@ describe('restaurantes', () => {
     it('aparece para los clientes solo cuando publica su menu', async () => {
       const { body } = await register('nuevo').expect(201);
       const before = JSON.parse(
-        await tools.execute(PHONE, 'listar_restaurantes', {}),
+        await tools.execute(CUSTOMER, 'listar_restaurantes', {}),
       );
 
       await api()
@@ -299,7 +302,7 @@ describe('restaurantes', () => {
         .expect(200);
 
       const after = JSON.parse(
-        await tools.execute(PHONE, 'listar_restaurantes', {}),
+        await tools.execute(CUSTOMER, 'listar_restaurantes', {}),
       );
       expect(before).toEqual([]);
       expect(after).toEqual([
@@ -538,12 +541,11 @@ describe('restaurantes', () => {
 
   describe('agente de WhatsApp', () => {
     const run = async (name: string, input = {}) =>
-      JSON.parse(await tools.execute(PHONE, name, input));
+      JSON.parse(await tools.execute(CUSTOMER, name, input));
 
     async function order(items: { item_id: number; cantidad: number }[]) {
       return run('crear_pedido', {
         restaurante: ID_A,
-        nombre_cliente: 'Ana',
         notas: 'Enviar a Calle 1, casa 2',
         items,
       });
@@ -601,7 +603,7 @@ describe('restaurantes', () => {
     });
 
     it('envia opciones interactivas y valida su cantidad', async () => {
-      await tools.execute(PHONE, 'enviar_opciones', {
+      await tools.execute(CUSTOMER, 'enviar_opciones', {
         texto: '¿Qué quieres?',
         opciones: [
           { id: '1', titulo: 'Arepas', descripcion: 'Desde $4' },
@@ -619,7 +621,7 @@ describe('restaurantes', () => {
         ],
       );
       await expect(
-        tools.execute(PHONE, 'enviar_opciones', {
+        tools.execute(CUSTOMER, 'enviar_opciones', {
           texto: 'Una sola',
           opciones: [{ id: '1', titulo: 'Arepas' }],
         }),
@@ -642,7 +644,6 @@ describe('restaurantes', () => {
 
       const result = await run('crear_pedido', {
         restaurante: ID_A,
-        nombre_cliente: 'Ana',
         total: 0.01,
         items: [{ item_id: arepa.id, cantidad: 2, precio: 0.01 }],
       });
@@ -705,10 +706,45 @@ describe('restaurantes', () => {
       expect(rows).toHaveLength(1);
     });
 
-    it('genera un QR valido', async () => {
-      const qr = await renderQr('https://api.example.com/pedido/abc');
+    it('el QR con el logo se puede escanear', async () => {
+      const url = `https://pedidos.example.com/pedido/${'a'.repeat(32)}`;
+      const qr = await renderQr(url);
+
+      const { data, info } = await sharp(qr)
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      const read = jsQR(new Uint8ClampedArray(data), info.width, info.height);
 
       expect(qr.toString('hex', 0, 8)).toBe(PNG_SIGNATURE);
+      expect(read?.data).toBe(url);
+    });
+
+    it('el QR lleva el logo rosa en el centro', async () => {
+      const qr = await renderQr('https://pedidos.example.com/pedido/abc');
+
+      const { data, info } = await sharp(qr)
+        .removeAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      const pixel = (x: number, y: number) =>
+        [...data.subarray((y * info.width + x) * 3, (y * info.width + x) * 3 + 3)];
+
+      expect(pixel(info.width / 2 - 29, info.height / 2 + 30)).toEqual([
+        255, 0, 96,
+      ]);
+    });
+
+    it('sin nombre de perfil registra un nombre generico', async () => {
+      const [arepa] = await publishMenu();
+
+      await tools.execute({ phone: PHONE }, 'crear_pedido', {
+        restaurante: ID_A,
+        items: [{ item_id: arepa.id, cantidad: 1 }],
+      });
+
+      const { body } = await asA(api().get('/restaurants/orders'));
+      expect(body[0].customer_name).toBe('Cliente de WhatsApp');
     });
 
     it('el pedido le llega solo a su restaurante, con el telefono real', async () => {

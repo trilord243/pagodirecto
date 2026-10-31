@@ -211,6 +211,39 @@ describe('whatsapp', () => {
       });
     });
 
+    it('toma el nombre del perfil de WhatsApp del cliente', () => {
+      const [message] = extractInboundMessages(
+        {
+          entry: [
+            {
+              changes: [
+                {
+                  field: 'messages',
+                  value: {
+                    metadata: { phone_number_id: '111' },
+                    contacts: [
+                      { wa_id: CUSTOMER, profile: { name: 'Ana Perez' } },
+                    ],
+                    messages: [
+                      {
+                        id: 'wamid.1',
+                        from: CUSTOMER,
+                        type: 'text',
+                        text: { body: 'hola' },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        '111',
+      );
+
+      expect(message.profileName).toBe('Ana Perez');
+    });
+
     it('falla cerrado si no hay app secret configurado', () => {
       expect(isValidSignature(Buffer.from('{}'), 'sha256=x', '')).toBe(false);
     });

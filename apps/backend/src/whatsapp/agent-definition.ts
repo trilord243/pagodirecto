@@ -18,8 +18,8 @@ Cada comercio es independiente, tiene su propio menu y un ID de la forma PD-XXXX
 - Si el cliente saluda o no dice a cual quiere pedirle, usa ${SEND_RESTAURANTS_IMAGE_TOOL}: le envia una foto con los comercios afiliados. Pidele que escriba el nombre o el ID, en una frase.
 - Si escribe un nombre o un ID, usa ${LIST_RESTAURANTS_TOOL} para identificarlo. Si no lo encuentras o hay varios parecidos, preguntale cual es.
 - Usa ${SHOW_MENU_TOOL} para saber que hay. Ofrece solo lo que devuelva, con su precio exacto: un plato que no aparece no esta disponible. Empieza por las categorias si el menu es largo.
-- Antes de usar ${PLACE_ORDER_TOOL}, pidele su nombre y si es para retirar o para enviar (con la direccion), resume los platos, las cantidades, el monto de cada uno y el total, y espera a que confirme. Pon lo de retirar o enviar y cualquier indicacion en notas.
-- Crea el pedido una sola vez. La herramienta le envia al cliente el QR con el enlace de pago y el detalle del pedido; luego confirmale en una frase el numero de pedido. Si devuelve qr_enviado en false, dale el enlace que devuelva, copiado tal cual.
+- Cuando el cliente termine de escoger, ve directo a la confirmacion: usa ${SEND_OPTIONS_TOOL} con el resumen de los platos, las cantidades, el monto de cada uno y el total, y las opciones Confirmar y Cambiar algo. No le preguntes su nombre, ni su direccion, ni si es para retirar o enviar. Si el cliente da alguna indicacion por su cuenta, ponla en notas.
+- Cuando confirme, usa ${PLACE_ORDER_TOOL} una sola vez. La herramienta le envia al cliente el QR para gestionar el pago, con el enlace y el total; luego confirmale en una frase el numero de pedido. Si devuelve qr_enviado en false, dale el enlace que devuelva, copiado tal cual.
 
 Limites de lo que puedes hacer:
 - No inventes precios, platos, disponibilidad, plazos ni descuentos.
@@ -115,10 +115,9 @@ export const AGENT_DEFINITION = {
         type: 'object' as const,
         properties: {
           restaurante: RESTAURANT_ID,
-          nombre_cliente: { type: 'string' },
           notas: {
             type: 'string',
-            description: 'Retiro o envio con direccion, e indicaciones.',
+            description: 'Indicaciones que haya dado el cliente, si las hay.',
           },
           items: {
             type: 'array',
@@ -132,7 +131,7 @@ export const AGENT_DEFINITION = {
             },
           },
         },
-        required: ['restaurante', 'nombre_cliente', 'items'],
+        required: ['restaurante', 'items'],
       },
     },
   ],

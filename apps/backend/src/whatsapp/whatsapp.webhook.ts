@@ -5,6 +5,7 @@ export interface InboundMessage {
   from: string;
   type: string;
   text?: string;
+  profileName?: string;
 }
 
 interface InteractiveReply {
@@ -29,6 +30,7 @@ interface WebhookPayload {
       field?: string;
       value?: {
         metadata?: { phone_number_id?: string };
+        contacts?: { wa_id?: string; profile?: { name?: string } }[];
         messages?: WebhookMessage[];
       };
     }[];
@@ -79,6 +81,12 @@ export function extractInboundMessages(
         change.field === 'messages' &&
         change.value?.metadata?.phone_number_id === phoneNumberId,
     )
-    .flatMap((change) => change.value?.messages ?? [])
-    .map(toInboundMessage);
+    .flatMap(({ value }) =>
+      (value?.messages ?? []).map((message) => ({
+        ...toInboundMessage(message),
+        profileName: value?.contacts?.find(
+          ({ wa_id }) => wa_id === message.from,
+        )?.profile?.name,
+      })),
+    );
 }

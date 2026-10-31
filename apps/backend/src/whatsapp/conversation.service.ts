@@ -109,7 +109,11 @@ export class ConversationService {
         sessionId,
         message.text.slice(0, MAX_INPUT_LENGTH),
         async (name, input) => {
-          const output = await this.tools.execute(message.from, name, input);
+          const output = await this.tools.execute(
+            { phone: message.from, name: message.profileName },
+            name,
+            input,
+          );
           delivered ||= MESSAGE_TOOLS.has(name);
           awaitingChoice = name === SEND_OPTIONS_TOOL;
           return output;

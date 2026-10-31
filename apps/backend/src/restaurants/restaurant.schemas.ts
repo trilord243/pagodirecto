@@ -91,7 +91,6 @@ export const UpdateOrderSchema = z
 
 export const PlaceOrderSchema = z.object({
   restaurante: z.string().trim().toUpperCase().min(1).max(20),
-  nombre_cliente: z.string().trim().min(1).max(120),
   notas: z.string().trim().max(500).nullish(),
   items: z
     .array(

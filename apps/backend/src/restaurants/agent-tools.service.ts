@@ -4,6 +4,7 @@ import { WhatsappApiService } from '../whatsapp/whatsapp-api.service.js';
 import { groupByCategory } from './menu.service.js';
 import { formatMoney } from './order-page.js';
 import { OrderRejectedError, OrdersService } from './orders.service.js';
+import type { Customer } from './orders.service.js';
 import { PlaceOrderSchema, SendOptionsSchema } from './restaurant.schemas.js';
 import { renderQr, renderRestaurantsImage } from './whatsapp-images.js';
 
@@ -40,7 +41,7 @@ export class RestaurantAgentTools {
   // El telefono llega de Meta y no del agente: un cliente no puede pedir a
   // nombre de otro, y el numero nunca pasa por Claude.
   async execute(
-    phone: string,
+    customer: Customer,
     name: string,
     input: Record<string, unknown>,
   ): Promise<string> {
@@ -48,13 +49,13 @@ export class RestaurantAgentTools {
       case LIST_RESTAURANTS_TOOL:
         return JSON.stringify(await this.listRestaurants());
       case SEND_RESTAURANTS_IMAGE_TOOL:
-        return JSON.stringify(await this.sendRestaurantsImage(phone));
+        return JSON.stringify(await this.sendRestaurantsImage(customer.phone));
       case SHOW_MENU_TOOL:
         return JSON.stringify(await this.showMenu(String(input.restaurante)));
       case SEND_OPTIONS_TOOL:
-        return this.sendOptions(phone, input);
+        return this.sendOptions(customer.phone, input);
       case PLACE_ORDER_TOOL:
-        return JSON.stringify(await this.placeOrder(phone, input));
+        return JSON.stringify(await this.placeOrder(customer, input));
       default:
         throw new AgentToolError(`Herramienta desconocida: ${name}`);
     }
@@ -140,7 +141,7 @@ export class RestaurantAgentTools {
     return 'Opciones enviadas. Espera la respuesta del cliente.';
   }
 
-  private async placeOrder(phone: string, input: Record<string, unknown>) {
+  private async placeOrder(customer: Customer, input: Record<string, unknown>) {
     const parsed = PlaceOrderSchema.safeParse(input);
     if (!parsed.success) {
       throw new AgentToolError('Datos del pedido incompletos.');
@@ -148,7 +149,7 @@ export class RestaurantAgentTools {
 
     let order;
     try {
-      order = await this.orders.place(phone, parsed.data);
+      order = await this.orders.place(customer, parsed.data);
     } catch (error) {
       if (error instanceof OrderRejectedError) {
         throw new AgentToolError(error.message);
@@ -168,7 +169,7 @@ export class RestaurantAgentTools {
     // agente lo crearia de nuevo.
     try {
       await this.whatsapp.sendImage(
-        phone,
+        customer.phone,
         await renderQr(url),
         `Pedido ${order.id} en ${order.restaurant}\nTotal: ${formatMoney(order.total, order.currency)}\n\nEscanea el QR o abre este enlace:\n${url}`,
       );

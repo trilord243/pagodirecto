@@ -5,6 +5,15 @@ import type { PlaceOrderInput } from './restaurant.schemas.js';
 // El mensaje de este error se le muestra al agente, y el agente al cliente.
 export class OrderRejectedError extends Error {}
 
+const DEFAULT_CUSTOMER_NAME = 'Cliente de WhatsApp';
+const MAX_CUSTOMER_NAME = 120;
+
+// El nombre es el del perfil de WhatsApp: el agente ya no se lo pregunta.
+export interface Customer {
+  phone: string;
+  name?: string;
+}
+
 export interface OrderSummary {
   id: number;
   restaurant: string;
@@ -46,7 +55,10 @@ export class OrdersService {
 
   // Los precios salen siempre de la base de datos: el agente solo dice que
   // platos y cuantos, nunca cuanto cuestan.
-  place(phone: string, input: PlaceOrderInput): Promise<OrderSummary> {
+  place(
+    { phone, name }: Customer,
+    input: PlaceOrderInput,
+  ): Promise<OrderSummary> {
     return this.db.transaction(async (tx) => {
       const { rows: restaurants } = await tx.query<{
         id: number;
@@ -99,7 +111,7 @@ export class OrdersService {
         [
           restaurant.id,
           phone,
-          input.nombre_cliente,
+          name?.trim().slice(0, MAX_CUSTOMER_NAME) || DEFAULT_CUSTOMER_NAME,
           input.notas ?? null,
           total,
           restaurant.currency,
