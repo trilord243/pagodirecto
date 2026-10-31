@@ -241,7 +241,17 @@ export class RestaurantAgentTools {
           order.card,
         );
       }
-      return { ...result, pagado: true, saldo_restante: order.walletBalance };
+      return {
+        ...result,
+        pagado: true,
+        saldo_restante: order.walletBalance,
+        tarjeta: order.card && {
+          compras: order.card.stamps,
+          compras_necesarias: order.card.stampsRequired,
+          premio: order.card.rewardName,
+          premio_ganado: order.card.rewardEarned,
+        },
+      };
     }
     // El pedido ya existe: un fallo aqui no puede volver como error, o el
     // agente lo crearia de nuevo.

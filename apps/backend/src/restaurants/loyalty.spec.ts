@@ -186,6 +186,37 @@ describe('fidelidad y promociones', () => {
         .expect(400);
     });
 
+    it('las compras anteriores cuentan al crear la tarjeta', async () => {
+      await pay((await order()).pedido);
+      await pay((await order()).pedido);
+
+      const { body } = await setProgram(5);
+
+      expect(body.customers[0]).toMatchObject({ stamps: 2, purchases: 2 });
+    });
+
+    it('al crear la tarjeta no regala un premio por compras viejas', async () => {
+      await pay((await order()).pedido);
+      await pay((await order()).pedido);
+      await pay((await order()).pedido);
+
+      const { body } = await setProgram(2);
+
+      expect(body.customers[0]).toMatchObject({
+        stamps: 1,
+        rewardsAvailable: 0,
+      });
+    });
+
+    it('cambiar la tarjeta no reinicia el avance de nadie', async () => {
+      await setProgram(5);
+      await pay((await order()).pedido);
+
+      const { body } = await setProgram(6);
+
+      expect(body.customers[0].stamps).toBe(1);
+    });
+
     it('no suma por pedir: solo cuando el pedido se paga', async () => {
       await setProgram();
       await order();
@@ -516,6 +547,28 @@ describe('fidelidad y promociones', () => {
       expect(body.customers[0]).toMatchObject({ stamps: 1, purchases: 1 });
       expect(sendImage).toHaveBeenCalledTimes(1);
       expect(sendImage.mock.calls[0][2]).toContain('Llevas 1 de 3');
+    });
+
+    it('le dice al agente cuantas compras lleva en la tarjeta', async () => {
+      await setProgram(3);
+      await topUp(50);
+
+      const result = await order({ usar_wallet: true });
+
+      expect(result.tarjeta).toEqual({
+        compras: 1,
+        compras_necesarias: 3,
+        premio: 'Malta',
+        premio_ganado: false,
+      });
+    });
+
+    it('sin tarjeta en el comercio no inventa avance', async () => {
+      await topUp(50);
+
+      const result = await order({ usar_wallet: true });
+
+      expect(result.tarjeta).toBeNull();
     });
 
     it('marcarlo pagado despues no suma otro ojito', async () => {

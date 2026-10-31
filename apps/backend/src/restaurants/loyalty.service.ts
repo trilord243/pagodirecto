@@ -93,6 +93,10 @@ export class LoyaltyService {
     if (!rows[0]) {
       throw new BadRequestException('Escoge un plato de tu menú como premio');
     }
+    const { rows: existing } = await this.db.query(
+      'select restaurant_id from loyalty_programs where restaurant_id = $1',
+      [restaurantId],
+    );
     await this.db.query(
       `insert into loyalty_programs
          (restaurant_id, stamps_required, reward_item_id, active)
@@ -109,6 +113,16 @@ export class LoyaltyService {
         program.active,
       ],
     );
+    // Las compras pagadas antes de crear la tarjeta tambien cuentan, sin llegar
+    // a regalar un premio que el comercio no ofrecia cuando se hicieron.
+    if (!existing[0]) {
+      await this.db.query(
+        `update loyalty_cards
+            set stamps = least(purchases, $2::int - 1)
+          where restaurant_id = $1`,
+        [restaurantId, program.stampsRequired],
+      );
+    }
     return this.overview(restaurantId);
   }
 
