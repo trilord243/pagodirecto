@@ -424,6 +424,29 @@ describe('restaurantes', () => {
       ]);
     });
 
+    it('no fusiona dos platos con el mismo nombre', async () => {
+      const { body } = await asA(api().put('/restaurants/menu'))
+        .send({
+          currency: 'USD',
+          categories: [
+            { name: 'Arepas', items: [{ name: 'Reina', price: 4 }] },
+            { name: 'Especiales', items: [{ name: 'REINA', price: 9 }] },
+          ],
+        })
+        .expect(400);
+
+      expect(body.message[0]).toContain('Hay dos productos llamados');
+      await asA(api().get('/restaurants/menu/items')).expect(200, []);
+    });
+
+    it('explica los errores de validacion en español', async () => {
+      const { body } = await asA(api().post('/restaurants/menu/items'))
+        .send({ name: 'x'.repeat(121), price: 1 })
+        .expect(400);
+
+      expect(body.message[0]).toContain('Demasiado');
+    });
+
     it('no acepta publicar sin precio, con precio 0 o sin categoria', async () => {
       const publish = (categories: unknown[]) =>
         asA(api().put('/restaurants/menu')).send({

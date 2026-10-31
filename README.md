@@ -37,7 +37,7 @@ Para correr un script en una sola app: `npm run <script> -w frontend` o `-w back
 
 Cada restaurante entra con su usuario y contraseña, sube la foto de su menú y confirma lo que Claude leyó. Desde ahí, los clientes piden por WhatsApp. Cada restaurante solo ve y toca lo suyo.
 
-API en `https://api.example.com/restaurants`. Salvo el login, todo requiere `Authorization: Bearer <token>`:
+Portal en `https://pedidos.example.com` y API en `https://pedidos.example.com/restaurants`. Salvo el login, todo requiere `Authorization: Bearer <token>`:
 
 | Método y ruta | Qué hace |
 | --- | --- |

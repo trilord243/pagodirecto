@@ -1,6 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
 
+// El portal le muestra estos mensajes al comercio.
+z.config(z.locales.es());
+
 export const ORDER_STATUSES = [
   'pending',
   'confirmed',
@@ -41,25 +44,40 @@ export const UpdateMenuItemSchema = MenuItemSchema.partial()
   .extend({ available: z.boolean().optional() })
   .refine((patch) => Object.keys(patch).length > 0, 'Sin cambios');
 
-export const PublishMenuSchema = z.object({
-  currency: z.enum(['USD', 'VES']),
-  categories: z
-    .array(
-      z.object({
-        name: z.string().trim().min(1).max(80),
-        items: z
-          .array(
-            MenuItemSchema.omit({ category: true }).extend({
-              available: z.boolean().default(true),
-            }),
-          )
-          .min(1)
-          .max(200),
-      }),
-    )
-    .min(1)
-    .max(50),
-});
+export const PublishMenuSchema = z
+  .object({
+    currency: z.enum(['USD', 'VES']),
+    categories: z
+      .array(
+        z.object({
+          name: z.string().trim().min(1).max(80),
+          items: z
+            .array(
+              MenuItemSchema.omit({ category: true }).extend({
+                available: z.boolean().default(true),
+              }),
+            )
+            .min(1)
+            .max(200),
+        }),
+      )
+      .min(1)
+      .max(50),
+  })
+  // Los platos se identifican por nombre: dos iguales se pisarian sin avisar.
+  .superRefine(({ categories }, context) => {
+    const seen = new Set<string>();
+    for (const item of categories.flatMap(({ items }) => items)) {
+      const key = item.name.toLowerCase();
+      if (seen.has(key)) {
+        context.addIssue({
+          code: 'custom',
+          message: `Hay dos productos llamados "${item.name}". Cámbiale el nombre a uno.`,
+        });
+      }
+      seen.add(key);
+    }
+  });
 
 export type PublishedMenu = z.infer<typeof PublishMenuSchema>;
 
@@ -108,7 +126,9 @@ export function parseBody<Schema extends z.ZodType>(
 ): z.output<Schema> {
   const result = schema.safeParse(body);
   if (!result.success) {
-    throw new BadRequestException(z.prettifyError(result.error));
+    throw new BadRequestException(
+      result.error.issues.map(({ message }) => message),
+    );
   }
   return result.data;
 }
