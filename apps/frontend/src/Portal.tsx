@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Footer } from './components/Footer.tsx'
 import { Header } from './components/Header.tsx'
+import { AdvisorView } from './components/AdvisorView.tsx'
 import { CatalogView } from './components/CatalogView.tsx'
 import { BagIcon, ChatIcon, MenuIcon, ScanIcon } from './components/Icons.tsx'
 import { LoadState } from './components/LoadState.tsx'
+import { LoyaltyView } from './components/LoyaltyView.tsx'
 import { MenuEditor } from './components/MenuEditor.tsx'
 import { MenuUploadForm } from './components/MenuUploadForm.tsx'
 import { OrdersView } from './components/OrdersView.tsx'
@@ -84,12 +86,22 @@ const HERO_COPY = {
     title: 'Tus pedidos',
     text: 'Confirma cada pedido, avísale al cliente cuándo está listo y marca lo que ya te pagaron.',
   },
+  loyalty: {
+    title: 'Haz que tus clientes vuelvan',
+    text: 'Premia cada compra con tu tarjeta de fidelidad y crea promociones para quienes más te compran.',
+  },
+  advisor: {
+    title: 'Tu asesor de negocio',
+    text: 'Analiza tus ventas y te dice qué mejorar y qué promociones crear.',
+  },
 }
 
 const SECTIONS = [
   { id: 'menu', label: 'Menú' },
   { id: 'catalog', label: 'Catálogo' },
   { id: 'orders', label: 'Pedidos' },
+  { id: 'loyalty', label: 'Fidelidad' },
+  { id: 'advisor', label: 'Asesor' },
 ] as const
 
 const EMPTY_SCAN =
@@ -108,6 +120,8 @@ interface PortalProps {
 
 export function Portal({ session, onLogout }: PortalProps) {
   const [section, setSection] = useState<Section>('menu')
+  // Se monta la primera vez que se abre y ya no se quita: el análisis tarda.
+  const [advisorOpened, setAdvisorOpened] = useState(false)
   const [view, setView] = useState<View>('loading')
   const [loadError, setLoadError] = useState('')
   const [loadAttempt, setLoadAttempt] = useState(0)
@@ -120,6 +134,18 @@ export function Portal({ session, onLogout }: PortalProps) {
   const [uploadPercent, setUploadPercent] = useState(0)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const activeUpload = useRef<AbortController | null>(null)
+  const tabs = useRef<HTMLDivElement>(null)
+
+  // En un teléfono angosto la pestaña abierta puede quedar fuera de la barra.
+  useEffect(() => {
+    const bar = tabs.current
+    const tab = bar?.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (!bar || !tab) return
+    bar.scrollTo({
+      left: tab.offsetLeft - (bar.clientWidth - tab.offsetWidth) / 2,
+      behavior: 'smooth',
+    })
+  }, [section])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -211,6 +237,11 @@ export function Portal({ session, onLogout }: PortalProps) {
   function openUpload() {
     setView('upload')
     scrollToTop()
+  }
+
+  function openSection(next: Section) {
+    setSection(next)
+    if (next === 'advisor') setAdvisorOpened(true)
   }
 
   function renderLoadState() {
@@ -316,6 +347,7 @@ export function Portal({ session, onLogout }: PortalProps) {
   }
 
   const hero = HERO_COPY[section === 'menu' ? menuHeroKey() : section]
+  const currency = published?.currency ?? 'USD'
 
   return (
     <>
@@ -326,6 +358,7 @@ export function Portal({ session, onLogout }: PortalProps) {
           <h1>{hero.title}</h1>
           <p>{hero.text}</p>
           <div
+            ref={tabs}
             className="segmented portal-tabs"
             role="tablist"
             aria-label="Secciones del portal"
@@ -337,7 +370,7 @@ export function Portal({ session, onLogout }: PortalProps) {
                 role="tab"
                 aria-selected={section === id}
                 className="segmented__option"
-                onClick={() => setSection(id)}
+                onClick={() => openSection(id)}
               >
                 {label}
               </button>
@@ -355,6 +388,24 @@ export function Portal({ session, onLogout }: PortalProps) {
               <CatalogView menu={published} onEdit={() => setSection('menu')} />
             ))}
           {section === 'orders' && <OrdersView token={session.token} />}
+          {section === 'loyalty' &&
+            (renderLoadState() ?? (
+              <LoyaltyView
+                token={session.token}
+                businessName={session.name}
+                currency={currency}
+                onEditMenu={() => setSection('menu')}
+              />
+            ))}
+          {advisorOpened && (
+            <div hidden={section !== 'advisor'}>
+              <AdvisorView
+                token={session.token}
+                currency={currency}
+                visible={section === 'advisor'}
+              />
+            </div>
+          )}
         </div>
 
         <aside className="layout__aside">

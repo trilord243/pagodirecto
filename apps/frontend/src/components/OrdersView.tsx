@@ -59,7 +59,10 @@ export function OrdersView({ token }: OrdersViewProps) {
       <div className="orders__head">
         <div>
           <h2>Pedidos</h2>
-          <p>Los que toma el agente de WhatsApp.</p>
+          <p>
+            Los que toma el agente de WhatsApp. Al marcar uno como pagado, suma
+            una compra en la tarjeta del cliente.
+          </p>
         </div>
         <button
           type="button"
@@ -167,12 +170,32 @@ function OrderCard({ token, order, onUpdated }: OrderCardProps) {
             <span>
               {item.quantity} × {item.name}
             </span>
-            <span>
-              {formatMoney(item.quantity * item.unit_price, order.currency)}
-            </span>
+            {item.unit_price === 0 ? (
+              <span className="order__reward">Premio</span>
+            ) : (
+              <span>
+                {formatMoney(item.quantity * item.unit_price, order.currency)}
+              </span>
+            )}
           </li>
         ))}
       </ul>
+
+      <dl className="order__summary">
+        <div>
+          <dt>Subtotal</dt>
+          <dd>{formatMoney(order.subtotal, order.currency)}</dd>
+        </div>
+        {order.discount > 0 && (
+          <div className="order__discount">
+            <dt>
+              Descuento
+              {order.promotion_name && ` · ${order.promotion_name}`}
+            </dt>
+            <dd>− {formatMoney(order.discount, order.currency)}</dd>
+          </div>
+        )}
+      </dl>
 
       {order.notes && <p className="order__notes">{order.notes}</p>}
 

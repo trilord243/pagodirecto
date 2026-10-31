@@ -1,0 +1,385 @@
+/* ---------- Fidelidad ---------- */
+
+/* El 150 % de :root se hereda en píxeles: en texto chico quedaría muy suelto. */
+.loyalty {
+  display: grid;
+  gap: 24px;
+  line-height: 1.45;
+}
+
+.loyalty__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+
+  h2 {
+    font-size: 28px;
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  p {
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .stats {
+    flex: none;
+  }
+}
+
+.stats .loyalty-chip--ok {
+  color: var(--success);
+  background: var(--success-bg);
+}
+
+.stats .loyalty-chip--warn {
+  color: var(--pink);
+  background: var(--pink-bg);
+
+  strong {
+    color: inherit;
+  }
+}
+
+.loyalty__alert {
+  display: flex;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--pink-dark);
+  background: var(--pink-bg);
+
+  svg {
+    flex: none;
+    margin-top: 1px;
+  }
+
+  strong {
+    font-weight: 700;
+  }
+}
+
+.loyalty__rules {
+  margin: 0;
+  padding: 0 0 0 18px;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+
+  strong {
+    font-weight: 700;
+    color: var(--text-h);
+  }
+}
+
+.loyalty__input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+
+  &::placeholder {
+    color: #a9afc8;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--pink);
+    background: var(--surface);
+  }
+
+  &[aria-invalid='true'] {
+    border-color: var(--danger);
+  }
+}
+
+.loyalty__saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--success);
+}
+
+/* ---------- Configurar la tarjeta ---------- */
+
+.loyalty-setup {
+  display: grid;
+  gap: 20px;
+  container-type: inline-size;
+}
+
+.loyalty-setup__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 288px;
+  align-items: start;
+  gap: 24px;
+}
+
+.loyalty-setup__form {
+  display: grid;
+  gap: 20px;
+}
+
+.loyalty-setup__range {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  input {
+    flex: 1;
+    min-width: 0;
+    height: 28px;
+    margin: 0;
+    accent-color: var(--pink);
+    cursor: pointer;
+  }
+
+  output {
+    flex: none;
+    min-width: 44px;
+    padding: 4px 0;
+    border-radius: 12px;
+    font-family: var(--heading);
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--text-h);
+    background: var(--bg);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.loyalty-setup__actions {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.loyalty-setup__empty {
+  display: grid;
+  justify-items: start;
+  gap: 16px;
+  padding-top: 8px;
+}
+
+.loyalty-setup__preview {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+
+  figcaption {
+    font-size: 13px;
+    color: var(--muted);
+  }
+}
+
+.loyalty-setup__preview--off .loyalty-card {
+  opacity: 0.55;
+}
+
+/* El ancho lo decide la tarjeta: en 900px la columna lateral ya la aprieta. */
+@container (max-width: 600px) {
+  .loyalty-setup__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Arriba, para ver los ojitos cambiar mientras se mueve el control. */
+  .loyalty-setup__preview {
+    order: -1;
+  }
+}
+
+/* ---------- Promociones ---------- */
+
+.loyalty-promotions {
+  display: grid;
+  gap: 20px;
+}
+
+.loyalty-promotions__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.promotion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+}
+
+.promotion[aria-busy='true'] {
+  opacity: 0.6;
+}
+
+.promotion--off .promotion__name,
+.promotion--off .promotion__terms {
+  color: var(--muted);
+}
+
+.promotion__info {
+  flex: 1 1 220px;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.promotion__name {
+  font-family: var(--heading);
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.promotion__terms {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.promotion__actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .switch {
+    min-width: 118px;
+  }
+
+  @media (max-width: 600px) {
+    flex-basis: 100%;
+    justify-content: space-between;
+  }
+}
+
+.promotion__error {
+  flex-basis: 100%;
+}
+
+.promotion-form {
+  display: grid;
+  gap: 16px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+
+  h3 {
+    font-size: 18px;
+  }
+}
+
+.promotion-form__numbers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+
+  @media (max-width: 600px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.promotion-form__preview {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-h);
+  background: var(--bg);
+  overflow-wrap: anywhere;
+
+  span {
+    font-weight: 400;
+    color: var(--muted);
+  }
+}
+
+.promotion-form__actions {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+/* ---------- Clientes ---------- */
+
+.loyalty-customers {
+  display: grid;
+  gap: 20px;
+  container-type: inline-size;
+}
+
+.loyalty-customers__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+/* Columnas fijas: cada cliente es su propia grilla y deben alinear entre sí. */
+.customer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 190px 210px;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.customer__who {
+  display: grid;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.customer__name {
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.customer__phone {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Compactas para que quepan en la fila de cada cliente. La columna va fija porque
+   sin tarjeta creada no hay avance y caerían en la del medio. */
+.customer__facts {
+  grid-column: 3;
+  justify-content: flex-end;
+
+  li {
+    padding: 2px 10px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+}
+
+@container (max-width: 600px) {
+  .customer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .customer__facts {
+    grid-column: auto;
+    justify-content: flex-start;
+  }
+}

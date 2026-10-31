@@ -546,6 +546,17 @@
   }
 }
 
+/* A 320px apenas caben en una fila: apilados taparían media pantalla. */
+@media (max-width: 340px) {
+  .editor-bar__actions {
+    flex-wrap: wrap;
+
+    .button {
+      padding: 0 10px;
+    }
+  }
+}
+
 /* ---------- Original menu ---------- */
 
 .original-card {

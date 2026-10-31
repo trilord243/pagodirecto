@@ -131,6 +131,45 @@
     flex: none;
     color: var(--text-h);
   }
+
+  li > span.order__reward {
+    align-self: flex-start;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--pink);
+    background: var(--pink-bg);
+  }
+}
+
+.order__summary {
+  margin: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+
+  div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  dt {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  dd {
+    flex: none;
+    margin: 0;
+    color: var(--text-h);
+  }
+}
+
+.order__discount dt,
+.order__discount dd {
+  color: var(--success);
 }
 
 .order__notes {

@@ -1,0 +1,267 @@
+/* ---------- Asesor ---------- */
+
+/* El 150 % de :root se hereda en píxeles: en texto chico quedaría muy suelto. */
+.advisor,
+.advisor-locked {
+  line-height: 1.45;
+}
+
+.advisor {
+  display: grid;
+  gap: 24px;
+}
+
+.advisor__start {
+  display: grid;
+  justify-items: start;
+  gap: 16px;
+}
+
+.advisor__head {
+  h2 {
+    font-size: 28px;
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  p {
+    color: var(--muted);
+    font-size: 15px;
+  }
+}
+
+/* ---------- Sin el complemento ---------- */
+
+.advisor-locked {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+
+  h2 {
+    max-width: 480px;
+    font-size: 26px;
+    line-height: 1.2;
+  }
+
+  > p {
+    max-width: 480px;
+  }
+}
+
+.advisor-locked__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 4px;
+  border-radius: 20px;
+  color: var(--pink);
+  background: var(--pink-bg);
+}
+
+.advisor-locked__list {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  text-align: left;
+
+  li {
+    display: flex;
+    gap: 10px;
+    font-size: 15px;
+    color: var(--text-h);
+  }
+
+  svg {
+    flex: none;
+    margin-top: 4px;
+    color: var(--success);
+  }
+}
+
+/* ---------- Analizando ---------- */
+
+.advisor-loading {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  background: var(--bg);
+
+  strong {
+    font-family: var(--heading);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-h);
+  }
+}
+
+.advisor-loading__eyes {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+
+  .eye {
+    width: 22px;
+    animation: advisor-eye 1.2s ease-in-out infinite;
+  }
+
+  .eye:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+
+  .eye:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+}
+
+@keyframes advisor-eye {
+  50% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .advisor-loading__eyes .eye {
+    animation: none;
+  }
+}
+
+/* ---------- Reporte ---------- */
+
+.advisor-report {
+  display: grid;
+  gap: 24px;
+}
+
+.advisor-report__summary {
+  display: grid;
+  gap: 6px;
+  padding: 20px;
+  border-radius: var(--radius);
+  color: rgba(255, 255, 255, 0.85);
+  background: var(--navy);
+  overflow-wrap: anywhere;
+
+  h2 {
+    font-size: 20px;
+    color: #fff;
+  }
+}
+
+.advisor-report__block {
+  display: grid;
+  gap: 12px;
+
+  h3 {
+    font-size: 20px;
+  }
+}
+
+.advisor-notes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+
+  li {
+    display: grid;
+    gap: 2px;
+    padding-left: 14px;
+    border-left: 3px solid var(--pink);
+    overflow-wrap: anywhere;
+  }
+
+  strong {
+    font-weight: 700;
+    color: var(--text-h);
+  }
+
+  span {
+    font-size: 15px;
+  }
+}
+
+.advisor-suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.advisor-suggestion {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  padding: 16px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border);
+  overflow-wrap: anywhere;
+
+  .field__hint {
+    margin-top: -2px;
+  }
+}
+
+.advisor-suggestion__reason {
+  font-size: 15px;
+}
+
+.advisor-suggestion__name {
+  font-family: var(--heading);
+  font-weight: 600;
+  font-size: 17px;
+  color: var(--text-h);
+}
+
+.advisor-suggestion__terms {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--pink-dark);
+}
+
+.advisor-suggestion__create {
+  margin-top: 6px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  background: var(--pink);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--pink-dark);
+  }
+
+  &:disabled {
+    background: #ff6b9f;
+    cursor: progress;
+  }
+}
+
+.advisor-suggestion__done {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--success);
+  background: var(--success-bg);
+
+  svg {
+    flex: none;
+  }
+}

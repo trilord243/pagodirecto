@@ -17,9 +17,14 @@ export interface Order {
   notes: string | null
   status: OrderStatus
   payment_status: PaymentStatus
+  subtotal: number
+  discount: number
+  promotion_name: string | null
+  reward_redeemed: boolean
   total: number
   currency: Currency
   created_at: string
+  // Un plato con unit_price 0 es el premio de la tarjeta de fidelidad.
   items: { name: string; quantity: number; unit_price: number }[]
 }
 
@@ -58,7 +63,8 @@ const orderDate = new Intl.DateTimeFormat('es-VE', {
   minute: '2-digit',
 })
 
+// Con espacio duro: el símbolo no se separa del monto al partir la línea.
 export const formatMoney = (value: number, currency: Currency) =>
-  `${CURRENCY_SYMBOL[currency]} ${amount.format(value)}`
+  `${CURRENCY_SYMBOL[currency]} ${amount.format(value)}`
 
 export const formatOrderDate = (iso: string) => orderDate.format(new Date(iso))

@@ -147,8 +147,37 @@
   border: 1px solid rgba(255, 0, 96, 0.5);
 }
 
-.portal-tabs {
+/* Si no caben, se desplazan de lado sin ensanchar la página. */
+.segmented.portal-tabs {
+  position: relative;
+  flex-wrap: nowrap;
+  max-width: 100%;
   margin-top: 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (max-width: 480px) {
+    gap: 2px;
+  }
+
+  .segmented__option {
+    flex: none;
+    white-space: nowrap;
+
+    /* Por fuera lo recortaría el desplazamiento. */
+    &:focus-visible {
+      outline-offset: -3px;
+    }
+
+    /* Así las cinco caben enteras desde 375px. */
+    @media (max-width: 480px) {
+      padding: 8px 7px;
+    }
+  }
 }
 
 .load-state {

@@ -117,3 +117,12 @@
 .catalog__state--out {
   color: var(--danger);
 }
+
+.catalog .stats__warn {
+  background: var(--pink-bg);
+  color: var(--pink-dark);
+
+  strong {
+    color: inherit;
+  }
+}

@@ -60,7 +60,7 @@ function readResponse<T>(status: number, text: string, token?: string): T {
 }
 
 interface RequestOptions {
-  method?: 'POST' | 'PUT' | 'PATCH'
+  method?: 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   token?: string
   body?: unknown
   signal?: AbortSignal

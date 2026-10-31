@@ -43,6 +43,16 @@ export interface ApiMenu {
   }[]
 }
 
+// Un plato como lo guarda el servidor: solo aquí viene su id real.
+export interface StoredMenuItem {
+  id: number
+  name: string
+  description: string | null
+  category: string | null
+  price: number
+  available: boolean
+}
+
 export const CURRENCY_SYMBOL: Record<Currency, string> = {
   USD: '$',
   VES: 'Bs',
@@ -122,6 +132,9 @@ export async function fetchMenu(
     await apiRequest<ApiMenu>('/restaurants/menu', { token, signal }),
   )
 }
+
+export const fetchMenuItems = (token: string, signal: AbortSignal) =>
+  apiRequest<StoredMenuItem[]>('/restaurants/menu/items', { token, signal })
 
 // Reemplaza el menú completo: lo que no venga aquí se borra en el servidor.
 export async function publishMenu(
