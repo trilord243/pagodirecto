@@ -35,7 +35,7 @@ export const MESSAGE_TOOLS = new Set([
 export class AgentToolError extends Error {}
 
 function publicBaseUrl(): string {
-  return process.env.PUBLIC_BASE_URL ?? 'https://pedidos.example.com';
+  return process.env.PUBLIC_BASE_URL ?? 'http://localhost:3000';
 }
 
 @Injectable()
