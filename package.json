@@ -1,13 +1,21 @@
 {
   "name": "pagodirecto",
   "private": true,
+  "description": "Portal de comercios y asistente de pedidos por WhatsApp de PagoDirecto",
   "workspaces": [
     "apps/*"
   ],
+  "engines": {
+    "node": ">=22.9"
+  },
   "scripts": {
     "dev:frontend": "npm run dev -w frontend",
     "dev:backend": "npm run start:dev -w backend",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
     "build": "npm run build --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run test:e2e -w backend"
   }
 }

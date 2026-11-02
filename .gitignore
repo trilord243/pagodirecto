@@ -1,8 +1,14 @@
 node_modules
 dist
+coverage
+*.log
+*.tsbuildinfo
+
+# Variables locales: solo se versionan los ejemplos
 .env
+.env.*
+!.env.example
 
 data
-*.tsbuildinfo
 .claude
 .playwright-mcp

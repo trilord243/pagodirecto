@@ -1,27 +1,26 @@
 {
   "name": "backend",
   "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "description": "API de restaurantes y webhook de WhatsApp de PagoDirecto",
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
   "scripts": {
     "build": "nest build",
-    "deploy": "nest deploy",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
-    "start:dev": "nest start --watch",
-    "start:debug": "nest start --debug --watch",
+    "start:dev": "nest start --watch --exec \"node --env-file-if-exists=.env\"",
+    "start:debug": "nest start --debug --watch --exec \"node --env-file-if-exists=.env\"",
     "start:prod": "node dist/main",
     "agent:setup": "node --env-file=.env dist/setup-agent.js",
-    "restaurants:seed": "node dist/seed-restaurants.js",
+    "restaurants:seed": "node --env-file-if-exists=.env dist/seed-restaurants.js",
     "lint": "oxlint src/ test/",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
+    "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
+    "wallet:topup": "node --env-file-if-exists=.env dist/wallet-topup.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
@@ -38,7 +37,6 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.14",
     "@nestjs/cli": "^12.0.0",
-    "@nestjs/mau": "^0.2.6",
     "@nestjs/schematics": "^12.0.0",
     "@nestjs/testing": "^12.0.1",
     "@types/express": "^5.0.0",
