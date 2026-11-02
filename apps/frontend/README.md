@@ -1,32 +1,24 @@
-# React + TypeScript + Vite
+# frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Portal de comercios de PagoDirecto: React 19 + TypeScript + Vite, sin librerías de UI ni router (ver `src/lib/route.ts`).
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm run dev       # http://localhost:5173, reenvía la API a http://localhost:3000
+npm run build     # tsc -b && vite build -> dist/
+npm run lint      # oxlint
+npm run preview
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Desde la raíz del monorepo: `npm run dev:frontend` o `npm run <script> -w frontend`.
+
+## Estructura
+
+| Carpeta | Qué hay |
+| --- | --- |
+| `src/Portal.tsx` | Entrada del portal: sesión y secciones |
+| `src/components/` | Vistas (menú, pedidos, fidelidad, promociones, asesor, IQ) y piezas compartidas |
+| `src/lib/` | Cliente de la API (`api.ts`) y un módulo por recurso |
+
+## Variables
+
+`VITE_API_URL` (ver `.env.example`). Vacía, el portal llama a su mismo origen: en desarrollo el proxy de `vite.config.ts` la reenvía a Nest (`API_PROXY_TARGET` cambia el destino) y en producción el mismo dominio sirve portal y API.

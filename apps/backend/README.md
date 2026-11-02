@@ -1,114 +1,66 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+API de PagoDirecto en NestJS 12 (ESM): restaurantes, menús, pedidos, fidelidad y el webhook de WhatsApp con un agente de Claude Managed Agents. Guarda todo en Postgres; las tablas las crea `src/database/schema.ts` al arrancar.
 
 ```bash
-$ npm install
+cp .env.example .env
+npm run start:dev          # http://localhost:3000, carga .env si existe
+npm test                   # vitest con PGlite en memoria
+npm run test:e2e           # contra el Postgres de DATABASE_URL
+npm run lint               # oxlint
+npm run build              # -> dist/
 ```
 
-## Compile and run the project
+Desde la raíz del monorepo: `npm run dev:backend` o `npm run <script> -w backend`.
 
-```bash
-# development
-$ npm run start
+Utilidades (después de `npm run build`):
 
-# watch mode
-$ npm run start:dev
+| Comando | Qué hace |
+| --- | --- |
+| `npm run agent:setup` | Crea o actualiza el agente de Claude e imprime `CLAUDE_AGENT_ID` y `CLAUDE_ENVIRONMENT_ID` |
+| `npm run restaurants:seed` | Crea los comercios de prueba que falten e imprime cada contraseña una sola vez |
+| `npm run wallet:topup -- <telefono> <monto> [moneda]` | Carga saldo de prueba a la billetera de un cliente |
 
-# production mode
-$ npm run start:prod
-```
+## Estructura
 
-## Run tests
+| Carpeta | Qué hay |
+| --- | --- |
+| `src/database/` | Pool de Postgres y esquema |
+| `src/restaurants/` | Auth de comercios, menú (y su lectura con Claude), pedidos, fidelidad, promociones, IQ, billetera y las herramientas del agente |
+| `src/whatsapp/` | Webhook de Meta, conversación con el agente, Graph API y el control opcional contra Odoo |
 
-```bash
-# unit tests
-$ npm run test
+## API
 
-# e2e tests
-$ npm run test:e2e
+Base `/restaurants`. Salvo login y registro, todo requiere `Authorization: Bearer <token>`.
 
-# test coverage
-$ npm run test:cov
-```
+| Método y ruta | Qué hace |
+| --- | --- |
+| `POST /auth/login` | Recibe `username` y `password`, devuelve `token` (dura 7 días) |
+| `POST /auth/register` | Afilia un comercio con `name` (nombre del negocio), `username` y `password`, sin verificación. Crea su ID y devuelve lo mismo que el login |
+| `POST /auth/logout` | Invalida el token |
+| `GET /me` | Datos del restaurante |
+| `GET /menu` | Menú completo por categorías |
+| `PUT /menu` | Publica el menú completo `{ currency, categories: [{ name, items: [{ name, description?, price, available? }] }] }`: lo que no venga se borra. `currency` es `USD` o `VES` |
+| `POST /menu/analyze` | Recibe hasta 5 archivos en el campo `files` (multipart, PDF, JPG, PNG o WebP, hasta 10 MB cada uno) y devuelve lo leído **sin guardar nada**, con `reviewReason` en lo dudoso |
+| `GET /menu/items` | Lista el menú |
+| `POST /menu/items` | Agrega un plato |
+| `PATCH /menu/items/:id` | Edita un plato o su disponibilidad con `available` |
+| `DELETE /menu/items/:id` | Borra un plato |
+| `GET /loyalty` y `PUT /loyalty` | Tarjeta de fidelidad del comercio (`stampsRequired`, `rewardItemId`, `active`) y sus clientes |
+| `GET, POST /promotions` y `PATCH, DELETE /promotions/:id` | Promociones por porcentaje, con `minPurchases` y `minTotal` opcionales |
+| `GET, POST /insights` | Asesor de negocio con IA. Complemento que se activa con `restaurants.insights_enabled` |
+| `GET /iq?mode=demo` o `mode=real` | PagoDirecto IQ: panel de ventas, clientes y comparación anónima. `demo` son cifras de ejemplo con los platos del comercio; `real` exige el plan activo |
+| `GET /orders` | Últimos 200 pedidos, con el teléfono del cliente |
+| `PATCH /orders/:id` | Cambia `status` (`pending`, `confirmed`, `ready`, `delivered`, `cancelled`) o `paymentStatus` (`pending`, `paid`) |
 
-## Deployment
+Cada comercio tiene un ID `PD-XXXXXXXX` que sale del usuario. Cada pedido tiene un enlace público `/pedido/<token>`, que es lo que abre el QR: muestra el comercio, los ítems con sus montos y el total, sin datos del cliente. Con `Accept: application/json` devuelve lo mismo en JSON.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## WhatsApp
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+`GET /whatsapp/webhook` responde la verificación de Meta con `WHATSAPP_VERIFY_TOKEN` y `POST /whatsapp/webhook` recibe los mensajes, validando la firma `X-Hub-Signature-256` con `WHATSAPP_APP_SECRET`. Las respuestas salen por Graph API.
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- `WHATSAPP_ALLOWED_NUMBERS` decide quién llega a Claude: una lista de números, `*` para todos o vacío para nadie.
+- `WHATSAPP_MAX_MESSAGES_PER_HOUR` limita a cada número.
+- Con `WHATSAPP_ODOO_GUARD=true`, antes de responder lee en el Postgres de Odoo, con un usuario de solo lectura, si un asesor atiende el chat (`discuss_channel.stv_bot_state`). Claude se calla si un asesor escribió en las últimas `WHATSAPP_HUMAN_HOURS` horas y no responde si no puede leer el estado. En local va en `false`.
+- La definición del agente (prompt y herramientas) está en `src/whatsapp/agent-definition.ts`; `npm run agent:setup` publica los cambios.
+- `GET /whatsapp/health` informa qué credenciales están configuradas, sin mostrarlas. No debe exponerse públicamente.
